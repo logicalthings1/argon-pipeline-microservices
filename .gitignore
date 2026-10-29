@@ -1,0 +1,14 @@
+# 1. Ignore everything in the home directory by default
+/*
+
+# 2. Whitelist only our infrastructure projects & scripts
+!/argon-internal-form/
+!/marian-form/
+!/nwhs-form/
+!/rugeleydds-form/
+!/deploy-all.sh
+!/.gitignore
+
+# 3. Exclude local secrets or temporary artifacts within projects
+*.log
+.env
