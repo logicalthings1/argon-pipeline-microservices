@@ -6,109 +6,141 @@
   <title>Contact Us - John K Rugeley, DDS</title>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 16px; color: #333; background: #fff; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 16px; color: #222; background: #fff; }
     .form-container { max-width: 600px; margin: 0 auto; }
-    .form-group { margin-bottom: 16px; }
-    label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
-    .required { color: #d32f2f; }
+    .required-notice { font-size: 13px; color: #555; margin-bottom: 18px; }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: #111; }
+    .required { color: #d32f2f; font-weight: bold; }
+    
     input[type="text"], input[type="email"], input[type="tel"], textarea {
-      width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px;
+      width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #767676; border-radius: 4px; font-size: 16px; color: #111; background-color: #fff;
     }
     textarea { height: 120px; resize: vertical; }
-    .consent-group { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0; font-size: 13px; color: #555; }
-    .consent-group input { margin-top: 3px; }
-    .btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 12px 24px; font-size: 16px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }
+
+    input:focus-visible, textarea:focus-visible, button:focus-visible {
+      outline: 3px solid #1a568c;
+      outline-offset: 2px;
+    }
+
+    .consent-group { display: flex; align-items: flex-start; gap: 12px; margin: 22px 0; font-size: 13.5px; line-height: 1.5; color: #333; }
+    .consent-group input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; accent-color: #1a568c; cursor: pointer; }
+    .consent-group label { font-weight: normal; cursor: pointer; margin: 0; }
+
+    .btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 14px 24px; font-size: 16px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; min-height: 48px; }
     .btn-submit:hover { background-color: #13426b; }
-    .btn-submit:disabled { background-color: #a0b2c6; cursor: not-allowed; }
-    .honeypot { position: absolute; left: -5000px; }
-    #success-message { display: none; background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; padding: 20px; border-radius: 4px; text-align: center; }
-    #error-message { display: none; background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; padding: 12px; border-radius: 4px; margin-bottom: 16px; }
+    .btn-submit:disabled { background-color: #728496; cursor: not-allowed; }
+
+    .honeypot { display: none !important; }
+
+    #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 20px; border-radius: 4px; text-align: center; }
+    #error-message { display: none; background: #ffebee; border: 2px solid #c62828; color: #b71c1c; padding: 14px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; line-height: 1.4; }
   </style>
 </head>
 <body>
-<div class="form-container">
-  <div id="error-message"></div>
-  <div id="success-message" tabindex="-1">
-    <h3>Thank you!</h3>
+<main class="form-container">
+  <div id="error-message" role="alert" aria-live="assertive"></div>
+  <div id="success-message" role="status" aria-live="polite" tabindex="-1">
+    <h2>Thank you!</h2>
     <p>Your message has been securely sent to our front desk team. We will be in touch shortly.</p>
   </div>
 
-  <form id="contact-form" action="submit-form.php" method="POST">
+  <form id="contact-form" action="submit-form.php" method="POST" novalidate aria-label="Contact Us Form">
     <input type="hidden" name="form_type" value="contact">
+    <p class="required-notice"><span class="required" aria-hidden="true">*</span> Indicates required fields</p>
 
     <div class="honeypot" aria-hidden="true">
       <input type="text" name="fax_number" tabindex="-1" autocomplete="off">
     </div>
 
     <div class="form-group">
-      <label for="name">Your Name <span class="required">*</span></label>
-      <input type="text" id="name" name="name" required>
+      <label for="name">Your Name <span class="required" aria-hidden="true">*</span></label>
+      <input type="text" id="name" name="name" autocomplete="name" required aria-required="true">
     </div>
 
     <div class="form-group">
-      <label for="email">Your Email <span class="required">*</span></label>
-      <input type="email" id="email" name="email" required>
+      <label for="email">Your Email <span class="required" aria-hidden="true">*</span></label>
+      <input type="email" id="email" name="email" autocomplete="email" required aria-required="true">
     </div>
 
     <div class="form-group">
-      <label for="phone">Your Phone <span class="required">*</span></label>
-      <input type="tel" id="phone" name="phone" required>
+      <label for="phone">Your Phone <span class="required" aria-hidden="true">*</span></label>
+      <input type="tel" id="phone" name="phone" autocomplete="tel" required aria-required="true">
     </div>
 
     <div class="form-group">
-      <label for="message">Your Message <span class="required">*</span></label>
-      <textarea id="message" name="message" required></textarea>
+      <label for="message">Your Message <span class="required" aria-hidden="true">*</span></label>
+      <textarea id="message" name="message" required aria-required="true"></textarea>
     </div>
 
     <div class="consent-group">
-      <input type="checkbox" id="consent" name="consent" value="yes" required>
+      <input type="checkbox" id="consent" name="consent" value="yes" required aria-required="true">
       <label for="consent">
-        <strong>This Form Is Not For Submitting Personal Health Information</strong><br>
-        I acknowledge that this form is strictly for general administrative inquiries and scheduling requests and is not intended for clinical symptoms, medical/dental histories, or sensitive health details. <span class="required">*</span>
+        By checking this box and submitting this form, I consent to the collection and processing of the information provided, which may include Protected Health Information (PHI). I authorize this practice to contact me via email, phone, text message, or voicemail. I acknowledge and understand that standard email and text messaging are not secure or encrypted methods of communication. I accept the risks of communicating via unencrypted email and text message (including the risk of unauthorized access or interception by third parties) and explicitly request and consent to receive email and text communications from this practice regarding my inquiry or care. <span class="required" aria-hidden="true">*</span>
       </label>
     </div>
 
     <div class="form-group">
-      <div class="cf-turnstile" data-sitekey="<?php echo htmlspecialchars(htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '', ENT_QUOTES, 'UTF-8')); ?>"></div>
+      <div class="cf-turnstile" data-sitekey="<?= htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '', ENT_QUOTES, 'UTF-8') ?>"></div>
     </div>
 
     <button type="submit" id="submit-btn" class="btn-submit">Send Message</button>
   </form>
-</div>
+</main>
 
 <script>
 document.getElementById('contact-form').addEventListener('submit', async function(e) {
   e.preventDefault();
+  const form = this;
   const btn = document.getElementById('submit-btn');
   const errorDiv = document.getElementById('error-message');
   const successDiv = document.getElementById('success-message');
+
+  if (!form.checkValidity()) {
+    errorDiv.innerText = 'Please complete all required fields and accept the consent agreement before submitting.';
+    errorDiv.style.display = 'block';
+    errorDiv.focus();
+    return;
+  }
 
   errorDiv.style.display = 'none';
   btn.disabled = true;
   btn.innerText = 'Sending...';
 
   try {
-    const formData = new FormData(this);
-    const res = await fetch('submit-form.php', { method: 'POST', body: formData });
+    const formData = new FormData(form);
+    const res = await fetch('submit-form.php', { 
+      method: 'POST', 
+      headers: { 'Accept': 'application/json' },
+      body: formData 
+    });
     const data = await res.json();
 
-    if (data.success) {
-      document.getElementById('contact-form').style.display = 'none';
+    if (data.status === 'success' || data.success === true) {
+      form.style.display = 'none';
       successDiv.style.display = 'block';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
       successDiv.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       window.parent.postMessage({ action: 'formSubmittedSuccess' }, '*');
     } else {
-      errorDiv.innerText = data.error || 'An error occurred while submitting. Please call our office at 512-343-2758.';
+      errorDiv.innerText = data.message || data.error || 'An error occurred while submitting. Please call our office at 512-343-2758.';
       errorDiv.style.display = 'block';
+      errorDiv.focus();
       btn.disabled = false;
       btn.innerText = 'Send Message';
+      if (window.turnstile && typeof window.turnstile.reset === 'function') {
+        window.turnstile.reset();
+      }
     }
   } catch (err) {
     errorDiv.innerText = 'Unable to send message right now. Please call our office at 512-343-2758.';
     errorDiv.style.display = 'block';
+    errorDiv.focus();
     btn.disabled = false;
     btn.innerText = 'Send Message';
+    if (window.turnstile && typeof window.turnstile.reset === 'function') {
+      window.turnstile.reset();
+    }
   }
 });
 </script>
