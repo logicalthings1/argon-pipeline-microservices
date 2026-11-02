@@ -1,67 +1,132 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
-PROJECT_ID="mercury-499921"
+PROJECT="mercury-499921"
 REGION="us-central1"
 DRY_RUN=false
+REQUESTED_SERVICES=()
 
-if [[ "$1" == "--dry-run" ]]; then
-  DRY_RUN=true
+# Canonical service registry: name|source_directory|health_check_url
+ALL_SERVICES=(
+  "argon-internal-form|$HOME/argon-internal-form|https://argon.argonpipeline.com"
+  "marian-form|$HOME/marian-form|https://mwt.argonpipeline.com"
+  "nwhs-form|$HOME/nwhs-form|https://nwhs.argonpipeline.com"
+  "rugeleydds-form|$HOME/rugeleydds-form|https://rugeleydds.argonpipeline.com"
+)
+
+# Parse CLI options and arguments
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run|-d)
+      DRY_RUN=true
+      ;;
+    --help|-h)
+      echo "Usage: $0 [--dry-run] [service1 service2 ...]"
+      echo ""
+      echo "Available services:"
+      echo "  - argon-internal-form"
+      echo "  - marian-form"
+      echo "  - nwhs-form"
+      echo "  - rugeleydds-form"
+      echo ""
+      echo "If no service names are supplied, all services will be deployed."
+      exit 0
+      ;;
+    -*)
+      echo "Error: Unknown option '$arg'"
+      echo "Run '$0 --help' for usage."
+      exit 1
+      ;;
+    *)
+      REQUESTED_SERVICES+=("$arg")
+      ;;
+  esac
+done
+
+if [ "$DRY_RUN" = true ]; then
   echo ">>> RUNNING IN DRY-RUN MODE: No changes will be deployed or deleted."
 fi
 
-SERVICES=(
-  "argon-internal-form:argon-internal-form:https://argon.argonpipeline.com"
-  "marian-form:marian-form:https://mwt.argonpipeline.com"
-  "nwhs-form:nwhs-form:https://nwhs.argonpipeline.com"
-  "rugeleydds-form:rugeleydds-form:https://rugeleydds.argonpipeline.com"
-)
-
 echo "=========================================================="
 echo " Zero-Cost Multi-Tenant Cloud Run Deployment Pipeline     "
-echo " Project: ${PROJECT_ID} | Region: ${REGION}               "
+echo " Project: $PROJECT | Region: $REGION                "
 echo "=========================================================="
 
-for entry in "${SERVICES[@]}"; do
-  IFS=":" read -r DIR SERVICE_NAME URL <<< "${entry}"
-  
-  echo -e "\n----------------------------------------------------------"
-  echo ">>> Service: ${SERVICE_NAME}"
-  echo "    Source Dir: ~/${DIR}"
+# Determine target service list
+SERVICES_TO_DEPLOY=()
+if [ ${#REQUESTED_SERVICES[@]} -eq 0 ]; then
+  SERVICES_TO_DEPLOY=("${ALL_SERVICES[@]}")
+else
+  for req in "${REQUESTED_SERVICES[@]}"; do
+    MATCH_FOUND=false
+    for entry in "${ALL_SERVICES[@]}"; do
+      IFS="|" read -r svc_name svc_dir svc_url <<< "$entry"
+      if [ "$req" == "$svc_name" ]; then
+        SERVICES_TO_DEPLOY+=("$entry")
+        MATCH_FOUND=true
+        break
+      fi
+    done
+    if [ "$MATCH_FOUND" = false ]; then
+      echo "Error: Unknown service '$req'."
+      echo "Valid services are: argon-internal-form, marian-form, nwhs-form, rugeleydds-form"
+      exit 1
+    fi
+  done
+fi
+
+# Deploy each selected service
+for entry in "${SERVICES_TO_DEPLOY[@]}"; do
+  IFS="|" read -r svc_name svc_dir svc_url <<< "$entry"
+
+  echo ""
+  echo "----------------------------------------------------------"
+  echo ">>> Service: $svc_name"
+  echo "    Source Dir: $svc_dir"
   echo "----------------------------------------------------------"
 
-  if [ ! -d "${HOME}/${DIR}" ]; then
-    echo "ERROR: Directory ${HOME}/${DIR} does not exist. Skipping."
-    continue
+  if [ ! -d "$svc_dir" ]; then
+    echo "Error: Directory '$svc_dir' does not exist."
+    exit 1
   fi
 
-  cd "${HOME}/${DIR}"
+  # 1. PHP Syntax Validation
+  echo "Validating PHP syntax..."
+  while IFS= read -r -d '' php_file; do
+    php -l "$php_file" > /dev/null
+  done < <(find "$svc_dir" -maxdepth 2 -type f -name "*.php" -print0)
+  echo "PHP syntax check PASSED."
 
+  # 2. Deployment
   if [ "$DRY_RUN" = true ]; then
-    echo "[DRY-RUN] Validating PHP syntax..."
-    find . -maxdepth 2 -name "*.php" -exec php -l {} \; > /dev/null
-    echo "[DRY-RUN] PHP syntax check PASSED."
-    echo "[DRY-RUN] Simulated: gcloud run deploy ${SERVICE_NAME} --region=${REGION} --source=."
+    echo "[DRY-RUN] Simulated: gcloud run deploy $svc_name --region=$REGION --source=."
   else
-    gcloud run deploy "${SERVICE_NAME}" \
-      --project="${PROJECT_ID}" \
-      --region="${REGION}" \
+    (cd "$svc_dir" && gcloud run deploy "$svc_name" \
+      --project="$PROJECT" \
+      --region="$REGION" \
       --source=. \
-      --clear-base-image \
-      --quiet
+      --quiet)
   fi
 
+  # 3. Production Health Check
   echo ">>> Running health check on production endpoint..."
-  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 15 "${URL}" || echo "ERR")
-  
-  if [[ "${HTTP_STATUS}" =~ ^(200|301|302)$ ]]; then
-    echo ">>> Health check PASSED: ${URL} responded with HTTP ${HTTP_STATUS}"
+  if [ "$DRY_RUN" = true ]; then
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$svc_url" || echo "000")
   else
-    echo ">>> WARNING: Health check returned HTTP ${HTTP_STATUS} for ${URL}"
+    sleep 3
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$svc_url" || echo "000")
+  fi
+
+  if [ "$HTTP_CODE" == "200" ]; then
+    echo ">>> Health check PASSED: $svc_url responded with HTTP 200"
+  else
+    echo ">>> Health check WARNING: $svc_url returned HTTP $HTTP_CODE"
   fi
 done
 
-echo -e "\n=========================================================="
+# Post-Deployment Maintenance
+echo ""
+echo "=========================================================="
 echo " Post-Deployment Free-Tier Maintenance Run                "
 echo "=========================================================="
 
@@ -69,20 +134,24 @@ if [ "$DRY_RUN" = true ]; then
   echo "[DRY-RUN] Simulated: Image retention enforcement (keeping 2 newest per service)."
   echo "[DRY-RUN] Simulated: GCS source staging bucket purge."
 else
-  for pkg in argon-internal-form marian-form nwhs-form rugeleydds-form; do
-    echo "Checking image revisions for ${pkg}..."
-    gcloud artifacts docker images list "us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${pkg}" \
-      --sort-by="~CREATE_TIME" \
-      --format="value(DIGEST)" 2>/dev/null | tail -n +3 | while read -r digest; do
-        [ -n "$digest" ] && gcloud artifacts docker images delete \
-          "us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${pkg}@${digest}" \
-          --delete-tags \
-          --quiet
-    done
+  # Enforce image retention for deployed services
+  for entry in "${SERVICES_TO_DEPLOY[@]}"; do
+    IFS="|" read -r svc_name svc_dir svc_url <<< "$entry"
+    REPO="us-central1-docker.pkg.dev/$PROJECT/cloud-run-source-deploy/$svc_name"
+    
+    OLD_DIGESTS=$(gcloud artifacts docker images list "$REPO" \
+      --sort-by="~CREATE_TIME" --format="value(DIGEST)" 2>/dev/null | sed -e '1,2d' || true)
+
+    if [ -n "$OLD_DIGESTS" ]; then
+      for digest in $OLD_DIGESTS; do
+        gcloud artifacts docker images delete "$REPO@$digest" --quiet --delete-tags 2>/dev/null || true
+      done
+    fi
   done
 
-  echo "Clearing temporary GCS source tarballs..."
-  gcloud storage rm --recursive "gs://run-sources-${PROJECT_ID}-${REGION}/**" --quiet 2>/dev/null || true
+  # Purge Cloud Build tarball archives from Google Cloud Storage
+  gsutil -m rm -r "gs://${PROJECT}_cloudbuild/source/**" 2>/dev/null || true
 fi
 
-echo -e "\nExecution finished successfully."
+echo ""
+echo "Execution finished successfully."
