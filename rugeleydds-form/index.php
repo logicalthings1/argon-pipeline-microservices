@@ -1,8 +1,8 @@
 <?php
-require_once 'config.php';
 $form = $_GET['form'] ?? 'contact';
+
 if ($form === 'appointment') {
-    require 'appointment.php';
+    require __DIR__ . '/appointment.php';
 } else {
-    require 'contact.php';
+    require __DIR__ . '/contact.php';
 }

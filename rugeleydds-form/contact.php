@@ -1,4 +1,3 @@
-<?php require_once 'config.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,7 +33,7 @@
     <p>Your message has been securely sent to our front desk team. We will be in touch shortly.</p>
   </div>
 
-  <form id="contact-form" action="submit.php" method="POST">
+  <form id="contact-form" action="submit-form.php" method="POST">
     <input type="hidden" name="form_type" value="contact">
 
     <div class="honeypot" aria-hidden="true">
@@ -70,7 +69,7 @@
     </div>
 
     <div class="form-group">
-      <div class="cf-turnstile" data-sitekey="<?php echo htmlspecialchars(TURNSTILE_SITE_KEY); ?>"></div>
+      <div class="cf-turnstile" data-sitekey="<?php echo htmlspecialchars(htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '', ENT_QUOTES, 'UTF-8')); ?>"></div>
     </div>
 
     <button type="submit" id="submit-btn" class="btn-submit">Send Message</button>
@@ -90,7 +89,7 @@ document.getElementById('contact-form').addEventListener('submit', async functio
 
   try {
     const formData = new FormData(this);
-    const res = await fetch('submit.php', { method: 'POST', body: formData });
+    const res = await fetch('submit-form.php', { method: 'POST', body: formData });
     const data = await res.json();
 
     if (data.success) {
