@@ -13,12 +13,12 @@
     label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: #111; }
     .required { color: #d32f2f; font-weight: bold; }
     
-    input[type="text"], input[type="email"], input[type="tel"], textarea {
+    input[type="text"], input[type="email"], input[type="tel"], select, textarea {
       width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #767676; border-radius: 4px; font-size: 16px; color: #111; background-color: #fff;
     }
     textarea { height: 120px; resize: vertical; }
 
-    input:focus-visible, textarea:focus-visible, button:focus-visible {
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
       outline: 3px solid #1a568c;
       outline-offset: 2px;
     }
@@ -35,6 +35,28 @@
 
     #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 20px; border-radius: 4px; text-align: center; }
     #error-message { display: none; background: #ffebee; border: 2px solid #c62828; color: #b71c1c; padding: 14px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; line-height: 1.4; }
+
+    .attribution {
+      text-align: center;
+      margin: 14px 0 0 0;
+      color: #0a0a0a;
+      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.8em;
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+      font-style: normal;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .attribution a {
+      color: #555;
+      text-decoration: none;
+    }
+    .attribution a:hover, .attribution a:focus-visible {
+      color: #1a568c;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -69,6 +91,23 @@
     </div>
 
     <div class="form-group">
+      <label for="how_you_find">How did you find us? <span class="required" aria-hidden="true">*</span></label>
+      <select id="how_you_find" name="how_you_find" required aria-required="true">
+        <option value="" disabled selected>Please select an option</option>
+        <option value="Google">Google / Search</option>
+        <option value="AI/ChatGPT/Gemini">AI / ChatGPT / Gemini</option>
+        <option value="Insurance">Insurance Provider</option>
+        <option value="Friend/Family">Friend / Family</option>
+        <option value="Other">Referral / Other</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="referal_name">Referral / Other Details</label>
+      <input type="text" id="referal_name" name="referal_name" placeholder="Name or source">
+    </div>
+
+    <div class="form-group">
       <label for="message">Your Message <span class="required" aria-hidden="true">*</span></label>
       <textarea id="message" name="message" required aria-required="true"></textarea>
     </div>
@@ -85,6 +124,10 @@
     </div>
 
     <button type="submit" id="submit-btn" class="btn-submit">Send Message</button>
+
+    <p class="attribution">
+      <a href="https://argonpipeline.com/?utm_source=website&utm_medium=footer&utm_campaign=rugeleydds" target="_blank" rel="noopener">HIPAA Compliant Contact Form</a>
+    </p>
   </form>
 </main>
 
