@@ -54,6 +54,29 @@
     /* Alerts */
     #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 16px; border-radius: 4px; text-align: center; }
     #error-message { display: none; background: #ffebee; border: 2px solid #c62828; color: #b71c1c; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; line-height: 1.4; }
+
+    /* Argon Attribution */
+    .attribution {
+      text-align: center;
+      margin: 12px 0 0 0;
+      color: #0a0a0a;
+      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.8em;
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+      font-style: normal;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .attribution a {
+      color: #555;
+      text-decoration: none;
+    }
+    .attribution a:hover, .attribution a:focus-visible {
+      color: #1a568c;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -101,9 +124,10 @@
         <select id="how_you_find" name="how_you_find" required aria-required="true">
           <option value="" disabled selected>Please select</option>
           <option value="Google">Google / Search</option>
+          <option value="AI/ChatGPT/Gemini">AI / ChatGPT / Gemini</option>
           <option value="Insurance">Insurance Provider</option>
           <option value="Friend/Family">Friend / Family</option>
-          <option value="Other">Other</option>
+          <option value="Other">Referral / Other</option>
         </select>
       </div>
       <div class="form-col">
@@ -134,6 +158,10 @@
     -->
 
     <button type="submit" id="submit-btn" class="btn-submit">Send Message</button>
+
+    <p class="attribution">
+      <a href="https://argonpipeline.com/?utm_source=website&utm_medium=footer&utm_campaign=nwhs" target="_blank" rel="noopener">HIPAA Compliant Contact Form</a>
+    </p>
   </form>
 </main>
 
