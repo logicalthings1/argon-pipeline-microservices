@@ -137,7 +137,7 @@ $userAgent = htmlspecialchars($userAgent, ENT_QUOTES, 'UTF-8');
 // =========================================================================
 // 3.2 REQUIRED FIELDS CHECK
 // =========================================================================
-if (empty($firstName) || empty($phone) || empty($message) || empty($howYouFind) || $consent !== 'yes' || !$email) {
+if (empty($firstName) || empty($lastName) || empty($phone) || empty($message) || empty($howYouFind) || $consent !== 'yes' || !$email) {
     header('Content-Type: application/json');
     echo json_encode(["status" => "error", "success" => false, "message" => "Please complete all required fields and accept the consent agreement."]);
     exit;

@@ -6,48 +6,69 @@
   <title>Make an Appointment - John K Rugeley, DDS</title>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 16px; color: #222; background: #fff; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #222; background: #fff; }
     .form-container { max-width: 600px; margin: 0 auto; }
-    .required-notice { font-size: 13px; color: #555; margin-bottom: 18px; }
-    .form-group { margin-bottom: 18px; }
-    label, legend { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: #111; }
+    
+    /* Strict 2-Column Row (Desktop and Mobile) */
+    .form-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .form-col {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .form-full {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    label, legend { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; color: #111; }
     .required { color: #d32f2f; font-weight: bold; }
     
     input[type="text"], input[type="email"], input[type="tel"], select, textarea {
-      width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #767676; border-radius: 4px; font-size: 16px; color: #111; background-color: #fff;
+      width: 100%; padding: 8px 10px; border: 1px solid #767676; border-radius: 4px; font-size: 14px; color: #111; background-color: #fff;
     }
-    textarea { height: 110px; resize: vertical; }
+    textarea { height: 75px; resize: vertical; }
 
+    /* WCAG Focus Indicators */
     input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
-      outline: 3px solid #1a568c;
-      outline-offset: 2px;
+      outline: 2px solid #1a568c;
+      outline-offset: 1px;
     }
 
+    /* Patient Type Radio Fieldset at Top */
     fieldset.radio-fieldset {
       border: none;
       padding: 0;
-      margin: 0;
+      margin: 0 0 10px 0;
     }
-    .radio-group { display: flex; gap: 24px; margin-top: 6px; }
-    .radio-group label { font-weight: normal; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; min-height: 32px; }
-    .radio-group input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: #1a568c; }
+    .radio-group { display: flex; gap: 20px; margin-top: 4px; }
+    .radio-group label { font-weight: normal; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; min-height: 28px; font-size: 13px; }
+    .radio-group input[type="radio"] { width: 16px; height: 16px; margin: 0; accent-color: #1a568c; }
 
-    .consent-group { display: flex; align-items: flex-start; gap: 12px; margin: 22px 0; font-size: 13.5px; line-height: 1.5; color: #333; }
-    .consent-group input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; accent-color: #1a568c; cursor: pointer; }
+    /* Consent Checkbox */
+    .consent-group { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 14px 0; font-size: 12px; line-height: 1.4; color: #333; }
+    .consent-group input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: #1a568c; cursor: pointer; }
     .consent-group label { font-weight: normal; cursor: pointer; margin: 0; }
 
-    .btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 14px 24px; font-size: 16px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; min-height: 48px; }
+    /* Submit Button */
+    .btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 11px 20px; font-size: 15px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }
     .btn-submit:hover { background-color: #13426b; }
     .btn-submit:disabled { background-color: #728496; cursor: not-allowed; }
 
     .honeypot { display: none !important; }
 
-    #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 20px; border-radius: 4px; text-align: center; }
-    #error-message { display: none; background: #ffebee; border: 2px solid #c62828; color: #b71c1c; padding: 14px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; line-height: 1.4; }
+    /* Alerts */
+    #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 16px; border-radius: 4px; text-align: center; }
+    #error-message { display: none; background: #ffebee; border: 2px solid #c62828; color: #b71c1c; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; line-height: 1.4; }
 
+    /* Attribution */
     .attribution {
       text-align: center;
-      margin: 14px 0 0 0;
+      margin: 12px 0 0 0;
       color: #0a0a0a;
       font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
       font-size: 11px;
@@ -72,34 +93,20 @@
 <main class="form-container">
   <div id="error-message" role="alert" aria-live="assertive"></div>
   <div id="success-message" role="status" aria-live="polite" tabindex="-1">
-    <h2>Appointment Request Received</h2>
+    <h3 style="margin-top: 0;">Appointment Request Received</h3>
     <p>Thank you! Our scheduling coordinator will review your requested dates and contact you to confirm your visit.</p>
   </div>
 
   <form id="appointment-form" action="submit-form.php" method="POST" novalidate aria-label="Appointment Request Form">
     <input type="hidden" name="form_type" value="appointment">
-    <p class="required-notice"><span class="required" aria-hidden="true">*</span> Indicates required fields</p>
 
+    <!-- Honeypot -->
     <div class="honeypot" aria-hidden="true">
       <input type="text" name="fax_number" tabindex="-1" autocomplete="off">
     </div>
 
-    <div class="form-group">
-      <label for="name">Your Name <span class="required" aria-hidden="true">*</span></label>
-      <input type="text" id="name" name="name" autocomplete="name" required aria-required="true">
-    </div>
-
-    <div class="form-group">
-      <label for="email">Your Email <span class="required" aria-hidden="true">*</span></label>
-      <input type="email" id="email" name="email" autocomplete="email" required aria-required="true">
-    </div>
-
-    <div class="form-group">
-      <label for="phone">Your Phone <span class="required" aria-hidden="true">*</span></label>
-      <input type="tel" id="phone" name="phone" autocomplete="tel" required aria-required="true">
-    </div>
-
-    <div class="form-group">
+    <!-- Top Row: Patient Type (Full Width) -->
+    <div class="form-full">
       <fieldset class="radio-fieldset">
         <legend>Patient Type <span class="required" aria-hidden="true">*</span></legend>
         <div class="radio-group">
@@ -109,38 +116,68 @@
       </fieldset>
     </div>
 
-    <div class="form-group">
-      <label for="preferred_dates">Preferred Dates <span class="required" aria-hidden="true">*</span></label>
-      <input type="text" id="preferred_dates" name="preferred_dates" placeholder="e.g. Next Tuesday or Thursday" required aria-required="true">
+    <!-- Row 1: First Name & Last Name -->
+    <div class="form-row">
+      <div class="form-col">
+        <label for="first_name">First Name <span class="required" aria-hidden="true">*</span></label>
+        <input type="text" id="first_name" name="first_name" autocomplete="given-name" required aria-required="true">
+      </div>
+      <div class="form-col">
+        <label for="last_name">Last Name <span class="required" aria-hidden="true">*</span></label>
+        <input type="text" id="last_name" name="last_name" autocomplete="family-name" required aria-required="true">
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="preferred_times">Preferred Times <span class="required" aria-hidden="true">*</span></label>
-      <input type="text" id="preferred_times" name="preferred_times" placeholder="e.g. Morning (8am - 12pm) or After 2pm" required aria-required="true">
+    <!-- Row 2: Email & Phone -->
+    <div class="form-row">
+      <div class="form-col">
+        <label for="email">Email <span class="required" aria-hidden="true">*</span></label>
+        <input type="email" id="email" name="email" autocomplete="email" required aria-required="true">
+      </div>
+      <div class="form-col">
+        <label for="phone">Phone <span class="required" aria-hidden="true">*</span></label>
+        <input type="tel" id="phone" name="phone" autocomplete="tel" required aria-required="true">
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="how_you_find">How did you find us? <span class="required" aria-hidden="true">*</span></label>
-      <select id="how_you_find" name="how_you_find" required aria-required="true">
-        <option value="" disabled selected>Please select an option</option>
-        <option value="Google">Google / Search</option>
-        <option value="AI/ChatGPT/Gemini">AI / ChatGPT / Gemini</option>
-        <option value="Insurance">Insurance Provider</option>
-        <option value="Friend/Family">Friend / Family</option>
-        <option value="Other">Referral / Other</option>
-      </select>
+    <!-- Row 3: Preferred Dates & Preferred Times -->
+    <div class="form-row">
+      <div class="form-col">
+        <label for="preferred_dates">Preferred Dates <span class="required" aria-hidden="true">*</span></label>
+        <input type="text" id="preferred_dates" name="preferred_dates" placeholder="e.g. Next Tue or Thu" required aria-required="true">
+      </div>
+      <div class="form-col">
+        <label for="preferred_times">Preferred Times <span class="required" aria-hidden="true">*</span></label>
+        <input type="text" id="preferred_times" name="preferred_times" placeholder="e.g. Morning or After 2pm" required aria-required="true">
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="referal_name">Referral / Other Details</label>
-      <input type="text" id="referal_name" name="referal_name" placeholder="Name or source">
+    <!-- Row 4: How Did You Find Us & Referral Details -->
+    <div class="form-row">
+      <div class="form-col">
+        <label for="how_you_find">How did you find us? <span class="required" aria-hidden="true">*</span></label>
+        <select id="how_you_find" name="how_you_find" required aria-required="true">
+          <option value="" disabled selected>Please select</option>
+          <option value="Google">Google / Search</option>
+          <option value="AI/ChatGPT/Gemini">AI / ChatGPT / Gemini</option>
+          <option value="Insurance">Insurance Provider</option>
+          <option value="Friend/Family">Friend / Family</option>
+          <option value="Other">Referral / Other</option>
+        </select>
+      </div>
+      <div class="form-col">
+        <label for="referal_name">Referral / Other Details</label>
+        <input type="text" id="referal_name" name="referal_name" placeholder="Name or source">
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="reason">Please describe your reason for visiting Dr. Rugeley <span class="required" aria-hidden="true">*</span></label>
-      <textarea id="reason" name="reason" placeholder="e.g. Routine cleaning and checkup, tooth pain, consultation" required aria-required="true"></textarea>
+    <!-- Row 5: Reason for Visit (Full Width) -->
+    <div class="form-full">
+      <label for="reason">Reason for Visit <span class="required" aria-hidden="true">*</span></label>
+      <textarea id="reason" name="reason" placeholder="e.g. Cleaning, tooth discomfort, consultation" required aria-required="true"></textarea>
     </div>
 
+    <!-- Row 6: PHI Consent Checkbox -->
     <div class="consent-group">
       <input type="checkbox" id="consent" name="consent" value="yes" required aria-required="true">
       <label for="consent">
@@ -148,7 +185,8 @@
       </label>
     </div>
 
-    <div class="form-group">
+    <!-- Cloudflare Turnstile -->
+    <div class="form-full">
       <div class="cf-turnstile" data-sitekey="<?= htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '', ENT_QUOTES, 'UTF-8') ?>"></div>
     </div>
 
