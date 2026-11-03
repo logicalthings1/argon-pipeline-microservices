@@ -1,6 +1,6 @@
 <?php
 // CRITICAL: Load Composer's autoloader
-require __DIR__ . '/vendor/autoload.php';
+if (file_exists(__DIR__ . '/vendor/autoload.php')) { require __DIR__ . '/vendor/autoload.php'; }
 
 // =========================================================================
 // 1. STRICT DOMAIN VALIDATION
