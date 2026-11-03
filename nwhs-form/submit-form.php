@@ -120,7 +120,7 @@ $userAgent = htmlspecialchars($userAgent, ENT_QUOTES, 'UTF-8');
 // =========================================================================
 // 3.2 REQUIRED FIELDS CHECK
 // =========================================================================
-if (empty($firstName) || empty($lastName) \vert{}\vert{} empty($phone) || empty($howYouFind) \vert{}\vert{} empty($message) || $consent !== 'yes' \vert{}\vert{} !$email) {
+if (empty($firstName) || empty($lastName) || empty($phone) || empty($howYouFind) || empty($message) || $consent !== 'yes' || !$email) {
     header('Content-Type: application/json');
     echo json_encode([
         "status"  => "error", 
