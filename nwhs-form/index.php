@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contact Us - Northwest Hills Smiles</title>
-  <!-- <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script> -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #222; background: #fff; }
-    .form-container { max-width: 600px; margin: 0 auto; }
+    .form-container { max-width: 600px; margin: 0; }
     
     /* Strict 2-Column Row (Desktop and Mobile) */
     .form-row {
@@ -52,12 +52,12 @@
     .honeypot { display: none !important; }
 
     /* Alerts */
-    #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 16px; border-radius: 4px; text-align: center; }
+    #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 16px; border-radius: 4px; text-align: left; }
     #error-message { display: none; background: #ffebee; border: 2px solid #c62828; color: #b71c1c; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; line-height: 1.4; }
 
     /* Argon Attribution */
     .attribution {
-      text-align: center;
+      text-align: left;
       margin: 12px 0 0 0;
       color: #0a0a0a;
       font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
@@ -150,12 +150,10 @@
       </label>
     </div>
 
-    <!-- Turnstile container (Commented out until DNS is live) -->
-    <!--
+    <!-- Cloudflare Turnstile (Light Theme) -->
     <div class="form-full">
-      <div class="cf-turnstile" data-sitekey="<?= htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '', ENT_QUOTES, 'UTF-8') ?>"></div>
+      <div class="cf-turnstile" data-theme="light" data-sitekey="<?= htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '0x4AAAAAAFz1hsueJbWNmtnG', ENT_QUOTES, 'UTF-8') ?>"></div>
     </div>
-    -->
 
     <button type="submit" id="submit-btn" class="btn-submit">Send Message</button>
 

@@ -1,5 +1,5 @@
 <?php
-// CRITICAL: Load Composer's autoloader
+// CRITICAL: Load Composer's autoloader conditionally
 if (file_exists(__DIR__ . '/vendor/autoload.php')) { require __DIR__ . '/vendor/autoload.php'; }
 
 // =========================================================================
@@ -9,17 +9,17 @@ $allowed_env = getenv('CLIENT_DOMAIN') ?: 'https://www.nwhsmiles.com';
 $allowed_origins = preg_split('/[;,]\s*/', trim($allowed_env));
 
 if (isset($_SERVER['HTTP_HOST'])) {
-    $allowed_origins[] = 'https://' .$_SERVER['HTTP_HOST'];
+    $allowed_origins[] = 'https://' . $_SERVER['HTTP_HOST'];
 }
 $allowed_origins = array_values(array_unique(array_filter($allowed_origins)));
 
-$current_origin =$_SERVER['HTTP_ORIGIN'] ?? '';
+$current_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-if (empty($current_origin) || !in_array($current_origin,$allowed_origins)) {
+if (empty($current_origin) || !in_array($current_origin, $allowed_origins)) {
     if (empty($current_origin) && isset($_SERVER['HTTP_HOST'])) {
-        $current_origin = 'https://' .$_SERVER['HTTP_HOST'];
+        $current_origin = 'https://' . $_SERVER['HTTP_HOST'];
     } else {
-        $logData = json_encode(['severity' => 'ERROR', 'message' => 'SECURITY BLOCK: Invalid Origin attempted - ' . ($current_origin ?: 'No Origin')]);
+        $logData = json_encode(['severity' => 'ERROR', 'message' => 'SECURITY BLOCK: Invalid Origin - ' . ($current_origin ?: 'No Origin')]);
         file_put_contents('php://stderr', $logData . "\n");
         
         header('Content-Type: application/json');
@@ -50,12 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $json_payload = file_get_contents('php://input');
 $data = json_decode($json_payload, true);
 if (!$data && !empty($_POST)) {
-    $data =$_POST;
+    $data = $_POST;
 }
 
 // --- HONEYPOT CHECK ---
 $honeypot = isset($data['fax_number']) ? trim($data['fax_number']) : '';
-if (!empty($honeypot)) {$logData = json_encode(['severity' => 'ERROR', 'message' => 'SECURITY BLOCK: Honeypot triggered by bot. (Hidden fax_number field filled)']);
+if (!empty($honeypot)) {
+    $logData = json_encode(['severity' => 'ERROR', 'message' => 'SECURITY BLOCK: Honeypot triggered by bot.']);
     file_put_contents('php://stderr', $logData . "\n");
     
     header('Content-Type: application/json');
@@ -63,11 +64,10 @@ if (!empty($honeypot)) {$logData = json_encode(['severity' => 'ERROR', 'message'
     exit;
 }
 
-// --- CLOUDFLARE TURNSTILE VERIFICATION (COMMENTED OUT UNTIL DNS ACTIVE) ---
-/*
-$turnstileSecret = getenv('TURNSTILE_SECRET_KEY');
+// --- CLOUDFLARE TURNSTILE VERIFICATION ---
+$turnstileSecret = getenv('TURNSTILE_SECRET_KEY') ?: '0x4AAAAAAFz1hmViR91CNcGsFwuu5yuTvLY';
 if (!empty($turnstileSecret)) {
-    $token =$data['cf-turnstile-response'] ?? '';
+    $token = $data['cf-turnstile-response'] ?? '';
     if (empty($token)) {
         header('Content-Type: application/json');
         echo json_encode(['status' => 'error', 'success' => false, 'message' => 'Spam verification token missing.']);
@@ -86,7 +86,8 @@ if (!empty($turnstileSecret)) {
     curl_close($ch);
 
     $responseData = json_decode($verifyResponse, true);
-    if (empty($responseData['success'])) {$logData = json_encode(['severity' => 'WARNING', 'message' => 'SECURITY BLOCK: Turnstile verification failed.']);
+    if (empty($responseData['success'])) {
+        $logData = json_encode(['severity' => 'WARNING', 'message' => 'SECURITY BLOCK: Turnstile verification failed.']);
         file_put_contents('php://stderr', $logData . "\n");
         
         header('Content-Type: application/json');
@@ -94,32 +95,29 @@ if (!empty($turnstileSecret)) {
         exit;
     }
 }
-*/
 
 // --- DATA SANITIZATION & VALIDATION ---
 $firstName   = isset($data['first_name'])   ? trim($data['first_name'])   : '';
-$lastName    = isset($data['last_name'])    ? trim($data['last_name'])    : '';$email       = isset($data['email'])        ? filter_var(trim($data['email']), FILTER_VALIDATE_EMAIL) : false;
+$lastName    = isset($data['last_name'])    ? trim($data['last_name'])    : '';
+$email       = isset($data['email'])        ? filter_var(trim($data['email']), FILTER_VALIDATE_EMAIL) : false;
 $phone       = isset($data['phone'])        ? trim($data['phone'])        : '';
-$howYouFind  = isset($data['how_you_find']) ? trim($data['how_you_find']) : '';$referalName = isset($data['referal_name']) ? trim($data['referal_name']) : '';
-$message     = isset($data['message'])      ? trim($data['message'])      : '';$consent     = isset($data['consent'])      ? trim($data['consent'])      : '';
+$howYouFind  = isset($data['how_you_find']) ? trim($data['how_you_find']) : '';
+$referalName = isset($data['referal_name']) ? trim($data['referal_name']) : '';
+$message     = isset($data['message'])      ? trim($data['message'])      : '';
+$consent     = isset($data['consent'])      ? trim($data['consent'])      : '';
 
-// =========================================================================
-// 3.1 CAPTURE METADATA (IP & USER AGENT)
-// =========================================================================
+// Capture metadata
 if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-    $ipList = explode(',',$_SERVER['HTTP_X_FORWARDED_FOR']);
+    $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
     $userIp = trim($ipList[0]);
 } else {
-    $userIp =$_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+    $userIp = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 }
-
-$userAgent =$_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 $userIp    = htmlspecialchars($userIp, ENT_QUOTES, 'UTF-8');
 $userAgent = htmlspecialchars($userAgent, ENT_QUOTES, 'UTF-8');
 
-// =========================================================================
-// 3.2 REQUIRED FIELDS CHECK
-// =========================================================================
+// Required fields check
 if (empty($firstName) || empty($lastName) || empty($phone) || empty($howYouFind) || empty($message) || $consent !== 'yes' || !$email) {
     header('Content-Type: application/json');
     echo json_encode([
@@ -141,11 +139,15 @@ $message     = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
 // =========================================================================
 // 4. MICROSOFT GRAPH API PROCESSING (OAuth 2.0)
 // =========================================================================
-$tenantId     = getenv('MS_TENANT_ID') ?: '1fba5d98-621a-45ed-a0da-81a4cbfc0955';$clientId     = getenv('MS_CLIENT_ID') ?: '542ce0e2-c623-45f7-afeb-b2f87f770bcf';
-$clientSecret = getenv('MS_CLIENT_SECRET');$senderEmail  = getenv('SMTP_USER') ?: 'info@nwhsmiles.com';
+$tenantId     = getenv('MS_TENANT_ID') ?: '1fba5d98-621a-45ed-a0da-81a4cbfc0955';
+$clientId     = getenv('MS_CLIENT_ID') ?: '542ce0e2-c623-45f7-afeb-b2f87f770bcf';
+$clientSecret = getenv('MS_CLIENT_SECRET');
+$senderEmail  = getenv('SMTP_USER') ?: 'info@nwhsmiles.com';
+
+$fullName = trim("$firstName $lastName");
 
 $emailBody  = "You have received a secure website message:\n\n";
-$emailBody .= "Name: " . $firstName . " " . $lastName . "\n";
+$emailBody .= "Name: " . $fullName . "\n";
 $emailBody .= "Email: " . $email . "\n";
 $emailBody .= "Phone: " . $phone . "\n";
 $emailBody .= "Found Via: " . $howYouFind . "\n";
@@ -178,27 +180,28 @@ try {
             'content' => http_build_query($tokenData)
         ]
     ];
-    $tokenContext = stream_context_create($tokenOptions);$tokenResponse = file_get_contents($tokenUrl, false,$tokenContext);
+    $tokenContext = stream_context_create($tokenOptions);
+    $tokenResponse = file_get_contents($tokenUrl, false, $tokenContext);
     
     if ($tokenResponse === false) {
         throw new Exception("Failed to connect to Microsoft authentication server.");
     }
 
     $tokenJson = json_decode($tokenResponse, true);
-    $accessToken =$tokenJson['access_token'] ?? '';
+    $accessToken = $tokenJson['access_token'] ?? '';
 
     $sendUrl = "https://graph.microsoft.com/v1.0/users/{$senderEmail}/sendMail";
     
     $messageData = [
         'message' => [
-            'subject' => "New website message from $firstName$lastName",
+            'subject' => "New website message from $fullName",
             'body' => [
                 'contentType' => 'Text',
                 'content'     => $emailBody
             ],
             'toRecipients'  => [['emailAddress' => ['address' => 'info@nwhsmiles.com']]],
             'bccRecipients' => [['emailAddress' => ['address' => 'art@logicalthings.com']]],
-            'replyTo'       => [['emailAddress' => ['address' => $email, 'name' => "$firstName$lastName"]]]
+            'replyTo'       => [['emailAddress' => ['address' => $email, 'name' => $fullName]]]
         ],
         'saveToSentItems' => 'true'
     ];
@@ -213,7 +216,8 @@ try {
         ]
     ];
     
-    $sendContext = stream_context_create($sendOptions);$sendResponse = file_get_contents($sendUrl, false,$sendContext);
+    $sendContext = stream_context_create($sendOptions);
+    $sendResponse = file_get_contents($sendUrl, false, $sendContext);
     
     if (strpos($http_response_header[0], '202') === false) {
         $errorData = json_decode($sendResponse, true);
@@ -225,19 +229,21 @@ try {
     exit;
 
 } catch (Exception $e) {
-    $errorMessage = 'MAILER ERROR (NWHS Graph API): ' .$e->getMessage();
-    $logData = json_encode(['severity' => 'ERROR', 'message' =>$errorMessage]);
+    $errorMessage = 'MAILER ERROR (NWHS Graph API): ' . $e->getMessage();
+    $logData = json_encode(['severity' => 'ERROR', 'message' => $errorMessage]);
     file_put_contents('php://stderr', $logData . "\n");
     
     $webhookUrl = getenv('ALERT_WEBHOOK_URL');
-    if (!empty($webhookUrl)) {$domain = $_SERVER['HTTP_HOST'] ?? 'Unknown Domain';$alertPayload = json_encode([
+    if (!empty($webhookUrl)) {
+        $domain = $_SERVER['HTTP_HOST'] ?? 'Unknown Domain';
+        $alertPayload = json_encode([
             "content" => "[ALERT] **NWHS Form Error**\n**Domain:** " . $domain . "\n**Error:** " . $errorMessage
         ]);
         
         $ch = curl_init($webhookUrl);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS,$alertPayload);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $alertPayload);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         curl_exec($ch);
