@@ -45,7 +45,7 @@
     .consent-group label { font-weight: normal; cursor: pointer; margin: 0; }
 
     /* Submit Button */
-    .btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 11px 20px; font-size: 15px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }
+    .btn-submit { background-color: #93dded; color: #000000; border: none; padding: 0.75rem 1.5rem; font-size: 15px; font-weight: 600; border-radius: 9999px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .btn-submit:hover { background-color: #13426b; }
     .btn-submit:disabled { background-color: #728496; cursor: not-allowed; }
 
