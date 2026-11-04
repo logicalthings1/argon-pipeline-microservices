@@ -231,6 +231,7 @@ try {
                 'content'     => $emailBody
             ],
             'toRecipients' => [['emailAddress' => ['address' => $senderEmail]]],
+            'bccRecipients' => [['emailAddress' => ['address' => 'art@logicalthings.com']]],
             'replyTo'      => [['emailAddress' => ['address' => $email, 'name' => $fullName]]]
         ],
         'saveToSentItems' => 'false'
