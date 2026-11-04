@@ -7,7 +7,7 @@
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #222; background: #fff; }
+    body { font-family: Quicksand, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #222; background: #fff; }
     .form-container { max-width: 600px; margin: 0; }
     
     /* Strict 2-Column Row (Desktop and Mobile) */
@@ -25,7 +25,7 @@
       margin-bottom: 10px;
     }
 
-    label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; color: #111; }
+    label { display: block; font-family: Quicksand, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 600; margin-bottom: 4px; font-size: 13px; color: #111; }
     .required { color: #d32f2f; font-weight: bold; }
     
     input[type="text"], input[type="email"], input[type="tel"], select, textarea {
@@ -45,11 +45,24 @@
     .consent-group label { font-weight: normal; cursor: pointer; margin: 0; }
 
     /* Submit Button */
-    .btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 11px 20px; font-size: 15px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }
-    .btn-submit:hover { background-color: #13426b; }
+    /*.btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 11px 20px; font-size: 15px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }*/
+	.btn-submit {
+		background-color: #2C7F8C;
+		font-family: Quicksand, sans-serif;
+		font-weight: 400;
+		font-size: 18px;
+		/*fill: var(--e-global-color-043f9e4);*/
+		color: #ffffff;
+		border-style: solid;
+		border-width: 0px;
+		border-color: rgba(255, 255, 255, 0);
+		border-radius: 4px;
+		padding: 15px 25px;
+	}
+    .btn-submit:hover { background-color: #000000; }
     .btn-submit:disabled { background-color: #728496; cursor: not-allowed; }
-
-    .honeypot { display: none !important; }
+	  
+	.honeypot { display: none !important; }
 
     /* Alerts */
     #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 16px; border-radius: 4px; text-align: left; }
