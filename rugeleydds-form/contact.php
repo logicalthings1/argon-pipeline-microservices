@@ -58,6 +58,7 @@
 		border-color: rgba(255, 255, 255, 0);
 		border-radius: 4px;
 		padding: 15px 25px;
+		cursor: pointer;
 	}
     .btn-submit:hover { background-color: #000000; }
     .btn-submit:disabled { background-color: #728496; cursor: not-allowed; }
