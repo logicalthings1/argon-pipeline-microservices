@@ -5,93 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contact Us - John K Rugeley, DDS</title>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: Quicksand, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #222; background: #fff; }
-    .form-container { max-width: 600px; margin: 0; }
-    
-    /* Strict 2-Column Row (Desktop and Mobile) */
-    .form-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-    .form-col {
-      flex: 1 1 0;
-      min-width: 0;
-    }
-    .form-full {
-      width: 100%;
-      margin-bottom: 10px;
-    }
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<style>
+		* { box-sizing: border-box; }
+		body { font-family: Quicksand, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #222; background: #fff; }
+		.form-container { max-width: 600px; margin: 0; }
 
-    label { display: block; font-family: Quicksand, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 600; margin-bottom: 4px; font-size: 13px; color: #111; }
-    .required { color: #d32f2f; font-weight: bold; }
-    
-    input[type="text"], input[type="email"], input[type="tel"], select, textarea {
-      width: 100%; padding: 8px 10px; border: 1px solid #767676; border-radius: 4px; font-size: 14px; color: #111; background-color: #fff;
-    }
-    textarea { height: 75px; resize: vertical; }
+		/* Strict 2-Column Row (Desktop and Mobile) */
+		.form-row {
+		  display: flex;
+		  gap: 12px;
+		  margin-bottom: 10px;
+		}
+		.form-col {
+		  flex: 1 1 0;
+		  min-width: 0;
+		}
+		.form-full {
+		  width: 100%;
+		  margin-bottom: 10px;
+		}
 
-    /* WCAG Focus Indicators */
-    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
-      outline: 2px solid #1a568c;
-      outline-offset: 1px;
-    }
+		label { display: block; font-family: Quicksand, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 600; margin-bottom: 4px; font-size: 13px; color: #111; }
+		.required { color: #d32f2f; font-weight: bold; }
 
-    /* Consent Checkbox */
-    .consent-group { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 14px 0; font-size: 12px; line-height: 1.4; color: #333; }
-    .consent-group input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: #1a568c; cursor: pointer; }
-    .consent-group label { font-weight: normal; cursor: pointer; margin: 0; }
+		input[type="text"], input[type="email"], input[type="tel"], select, textarea {
+		  width: 100%; padding: 8px 10px; border: 1px solid #767676; border-radius: 4px; font-size: 14px; color: #111; background-color: #fff;
+		}
+		textarea { height: 75px; resize: vertical; }
 
-    /* Submit Button */
-    /*.btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 11px 20px; font-size: 15px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }*/
-	.btn-submit {
-		background-color: #2C7F8C;
-		font-family: Quicksand, sans-serif;
-		font-weight: 400;
-		font-size: 18px;
-		/*fill: var(--e-global-color-043f9e4);*/
-		color: #ffffff;
-		border-style: solid;
-		border-width: 0px;
-		border-color: rgba(255, 255, 255, 0);
-		border-radius: 4px;
-		padding: 15px 25px;
-		cursor: pointer;
-	}
-    .btn-submit:hover { background-color: #000000; }
-    .btn-submit:disabled { background-color: #728496; cursor: not-allowed; }
-	  
-	.honeypot { display: none !important; }
+		/* WCAG Focus Indicators */
+		input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+		  outline: 2px solid #1a568c;
+		  outline-offset: 1px;
+		}
 
-    /* Alerts */
-    #success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 16px; border-radius: 4px; text-align: left; }
-    #error-message { display: none; background: #ffebee; border: 2px solid #c62828; color: #b71c1c; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; line-height: 1.4; }
+		/* Consent Checkbox */
+		.consent-group { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 14px 0; font-size: 12px; line-height: 1.4; color: #333; }
+		.consent-group input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: #1a568c; cursor: pointer; }
+		.consent-group label { font-weight: normal; cursor: pointer; margin: 0; }
 
-    /* Attribution */
-    .attribution {
-      text-align: left;
-      margin: 12px 0 0 0;
-      color: #0a0a0a;
-      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
-      font-size: 11px;
-      line-height: 1.8em;
-      font-weight: 400;
-      -webkit-font-smoothing: antialiased;
-      font-style: normal;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .attribution a {
-      color: #555;
-      text-decoration: none;
-    }
-    .attribution a:hover, .attribution a:focus-visible {
-      color: #1a568c;
-      text-decoration: underline;
-    }
-  </style>
+		/* Submit Button */
+		/*.btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 11px 20px; font-size: 15px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }*/
+		.btn-submit {
+			background-color: #2C7F8C;
+			font-family: Quicksand, sans-serif;
+			font-weight: 400;
+			font-size: 18px;
+			/*fill: var(--e-global-color-043f9e4);*/
+			color: #ffffff;
+			border-style: solid;
+			border-width: 0px;
+			border-color: rgba(255, 255, 255, 0);
+			border-radius: 4px;
+			padding: 15px 25px;
+			cursor: pointer;
+		}
+		.btn-submit:hover { background-color: #000000; }
+		.btn-submit:disabled { background-color: #728496; cursor: not-allowed; }
+
+		.honeypot { display: none !important; }
+
+		/* Alerts */
+		#success-message { display: none; background: #e8f5e9; border: 2px solid #2e7d32; color: #1b5e20; padding: 16px; border-radius: 4px; text-align: left; }
+		#error-message { display: none; background: #ffebee; border: 2px solid #c62828; color: #b71c1c; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; line-height: 1.4; }
+
+		/* Attribution */
+		.attribution {
+		  text-align: left;
+		  margin: 12px 0 0 0;
+		  color: #0a0a0a;
+		  font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+		  font-size: 11px;
+		  line-height: 1.8em;
+		  font-weight: 400;
+		  -webkit-font-smoothing: antialiased;
+		  font-style: normal;
+		  text-transform: uppercase;
+		  letter-spacing: 0.5px;
+		}
+		.attribution a {
+		  color: #555;
+		  text-decoration: none;
+		}
+		.attribution a:hover, .attribution a:focus-visible {
+		  color: #1a568c;
+		  text-decoration: underline;
+		}
+	</style>
 </head>
 <body>
 <main class="form-container">
