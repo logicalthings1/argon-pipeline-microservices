@@ -171,6 +171,10 @@ cat << HTML
 </iframe>
 HTML
 echo ""
-echo "3. Remember to add the following line to deploy-all.sh if desired:"
-echo "   \"$SERVICE_NAME|\$HOME/$SERVICE_NAME|https://$CUSTOM_DOMAIN\""
+if grep -q "# REGISTRY_ANCHOR" "$HOME/deploy-all.sh" 2>/dev/null; then
+  sed -i "/# REGISTRY_ANCHOR/i \  \"${SERVICE_NAME}|\$HOME/${SERVICE_NAME}|https://${CUSTOM_DOMAIN}\"" "$HOME/deploy-all.sh"
+  echo "3. Auto-registered in deploy-all.sh: [OK]"
+else
+  echo "3. deploy-all.sh anchor not found. Manually add: \"$SERVICE_NAME|\$HOME/$SERVICE_NAME|https://$CUSTOM_DOMAIN\""
+fi
 echo "=================================================="

@@ -12,7 +12,15 @@ ALL_SERVICES=(
   "marian-form|$HOME/marian-form|https://mwt.argonpipeline.com"
   "nwhs-form|$HOME/nwhs-form|https://nwhs.argonpipeline.com"
   "rugeleydds-form|$HOME/rugeleydds-form|https://rugeleydds.argonpipeline.com"
+  # REGISTRY_ANCHOR
 )
+
+# Extract registered service names dynamically
+REGISTERED_NAMES=()
+for entry in "${ALL_SERVICES[@]}"; do
+  [[ "$entry" =~ ^[[:space:]]*# ]] && continue
+  REGISTERED_NAMES+=("${entry%%|*}")
+done
 
 # Parse CLI options and arguments
 for arg in "$@"; do
@@ -24,10 +32,9 @@ for arg in "$@"; do
       echo "Usage: $0 [--dry-run] [service1 service2 ...]"
       echo ""
       echo "Available services:"
-      echo "  - argon-form"
-      echo "  - marian-form"
-      echo "  - nwhs-form"
-      echo "  - rugeleydds-form"
+      for name in "${REGISTERED_NAMES[@]}"; do
+        echo "  - $name"
+      done
       echo ""
       echo "If no service names are supplied, all services will be deployed."
       exit 0
@@ -49,17 +56,21 @@ fi
 
 echo "=========================================================="
 echo " Zero-Cost Multi-Tenant Cloud Run Deployment Pipeline     "
-echo " Project: $PROJECT | Region: $REGION                "
+echo " Project: $PROJECT | Region: $REGION                 "
 echo "=========================================================="
 
 # Determine target service list
 SERVICES_TO_DEPLOY=()
 if [ ${#REQUESTED_SERVICES[@]} -eq 0 ]; then
-  SERVICES_TO_DEPLOY=("${ALL_SERVICES[@]}")
+  for entry in "${ALL_SERVICES[@]}"; do
+    [[ "$entry" =~ ^[[:space:]]*# ]] && continue
+    SERVICES_TO_DEPLOY+=("$entry")
+  done
 else
   for req in "${REQUESTED_SERVICES[@]}"; do
     MATCH_FOUND=false
     for entry in "${ALL_SERVICES[@]}"; do
+      [[ "$entry" =~ ^[[:space:]]*# ]] && continue
       IFS="|" read -r svc_name svc_dir svc_url <<< "$entry"
       if [ "$req" == "$svc_name" ]; then
         SERVICES_TO_DEPLOY+=("$entry")
@@ -69,7 +80,7 @@ else
     done
     if [ "$MATCH_FOUND" = false ]; then
       echo "Error: Unknown service '$req'."
-      echo "Valid services are: argon-form, marian-form, nwhs-form, rugeleydds-form"
+      echo "Valid services are: ${REGISTERED_NAMES[*]}"
       exit 1
     fi
   done
@@ -111,10 +122,10 @@ for entry in "${SERVICES_TO_DEPLOY[@]}"; do
   # 3. Production Health Check
   echo ">>> Running health check on production endpoint..."
   if [ "$DRY_RUN" = true ]; then
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$svc_url" || echo "000")
+    HTTP_CODE=$(curl -s -L -o /dev/null -w "%{http_code}" "$svc_url" || echo "000")
   else
     sleep 3
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$svc_url" || echo "000")
+    HTTP_CODE=$(curl -s -L -o /dev/null -w "%{http_code}" "$svc_url" || echo "000")
   fi
 
   if [ "$HTTP_CODE" == "200" ]; then
