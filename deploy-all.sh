@@ -8,7 +8,7 @@ REQUESTED_SERVICES=()
 
 # Canonical service registry: name|source_directory|health_check_url
 ALL_SERVICES=(
-  "argon-internal-form|$HOME/argon-internal-form|https://argon.argonpipeline.com"
+  "argon-form|$HOME/argon-form|https://argon.argonpipeline.com"
   "marian-form|$HOME/marian-form|https://mwt.argonpipeline.com"
   "nwhs-form|$HOME/nwhs-form|https://nwhs.argonpipeline.com"
   "rugeleydds-form|$HOME/rugeleydds-form|https://rugeleydds.argonpipeline.com"
@@ -24,7 +24,7 @@ for arg in "$@"; do
       echo "Usage: $0 [--dry-run] [service1 service2 ...]"
       echo ""
       echo "Available services:"
-      echo "  - argon-internal-form"
+      echo "  - argon-form"
       echo "  - marian-form"
       echo "  - nwhs-form"
       echo "  - rugeleydds-form"
@@ -69,7 +69,7 @@ else
     done
     if [ "$MATCH_FOUND" = false ]; then
       echo "Error: Unknown service '$req'."
-      echo "Valid services are: argon-internal-form, marian-form, nwhs-form, rugeleydds-form"
+      echo "Valid services are: argon-form, marian-form, nwhs-form, rugeleydds-form"
       exit 1
     fi
   done
