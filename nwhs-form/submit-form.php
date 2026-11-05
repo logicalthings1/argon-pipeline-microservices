@@ -114,8 +114,8 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
     $userIp = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 }
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-$userIp    = htmlspecialchars($userIp, ENT_QUOTES, 'UTF-8');
-$userAgent = htmlspecialchars($userAgent, ENT_QUOTES, 'UTF-8');
+$userIp    = strip_tags($userIp);
+$userAgent = strip_tags($userAgent);
 
 // Required fields check
 if (empty($firstName) || empty($lastName) || empty($phone) || empty($howYouFind) || empty($message) || $consent !== 'yes' || !$email) {
@@ -129,12 +129,12 @@ if (empty($firstName) || empty($lastName) || empty($phone) || empty($howYouFind)
     exit;
 }
 
-$firstName   = htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8');
-$lastName    = htmlspecialchars($lastName, ENT_QUOTES, 'UTF-8');
-$phone       = htmlspecialchars($phone, ENT_QUOTES, 'UTF-8');
-$howYouFind  = htmlspecialchars($howYouFind, ENT_QUOTES, 'UTF-8');
-$referalName = htmlspecialchars($referalName, ENT_QUOTES, 'UTF-8');
-$message     = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+$firstName   = strip_tags($firstName);
+$lastName    = strip_tags($lastName);
+$phone       = strip_tags($phone);
+$howYouFind  = strip_tags($howYouFind);
+$referalName = strip_tags($referalName);
+$message     = strip_tags($message);
 
 // =========================================================================
 // 4. MICROSOFT GRAPH API PROCESSING (OAuth 2.0)
