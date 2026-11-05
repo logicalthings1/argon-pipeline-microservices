@@ -1,11 +1,13 @@
 # 1. Ignore everything in the home directory by default
 /*
 
-# 2. Whitelist only our infrastructure projects & scripts
-!/argon-internal-form/
+# 2. Whitelist infrastructure projects & automation scripts
+!/argon-form/
 !/marian-form/
 !/nwhs-form/
 !/rugeleydds-form/
+!/_template-form/
+!/provision-clinic.sh
 !/deploy-all.sh
 !/.gitignore
 
