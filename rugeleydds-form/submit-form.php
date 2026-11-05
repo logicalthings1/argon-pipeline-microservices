@@ -131,8 +131,8 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
 }
 
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-$userIp    = htmlspecialchars($userIp, ENT_QUOTES, 'UTF-8');
-$userAgent = htmlspecialchars($userAgent, ENT_QUOTES, 'UTF-8');
+$userIp    = strip_tags($userIp);
+$userAgent = strip_tags($userAgent);
 
 // =========================================================================
 // 3.2 REQUIRED FIELDS CHECK
@@ -144,15 +144,15 @@ if (empty($firstName) || empty($lastName) || empty($phone) || empty($message) ||
 }
 
 // XSS Sanitization
-$firstName     = htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8');
-$lastName      = htmlspecialchars($lastName, ENT_QUOTES, 'UTF-8');
-$phone         = htmlspecialchars($phone, ENT_QUOTES, 'UTF-8');
-$howYouFind    = htmlspecialchars($howYouFind, ENT_QUOTES, 'UTF-8');
-$referalName   = htmlspecialchars($referalName, ENT_QUOTES, 'UTF-8');
-$message       = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
-$preferredDate = htmlspecialchars($preferredDate, ENT_QUOTES, 'UTF-8');
-$preferredTime = htmlspecialchars($preferredTime, ENT_QUOTES, 'UTF-8');
-$patientType   = htmlspecialchars($patientType, ENT_QUOTES, 'UTF-8');
+$firstName     = strip_tags($firstName);
+$lastName      = strip_tags($lastName);
+$phone         = strip_tags($phone);
+$howYouFind    = strip_tags($howYouFind);
+$referalName   = strip_tags($referalName);
+$message       = strip_tags($message);
+$preferredDate = strip_tags($preferredDate);
+$preferredTime = strip_tags($preferredTime);
+$patientType   = strip_tags($patientType);
 
 // =========================================================================
 // 4. MICROSOFT GRAPH API DISPATCH

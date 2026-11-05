@@ -78,8 +78,8 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
 }
 
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-$userIp    = htmlspecialchars($userIp, ENT_QUOTES, 'UTF-8');
-$userAgent = htmlspecialchars($userAgent, ENT_QUOTES, 'UTF-8');
+$userIp    = strip_tags($userIp);
+$userAgent = strip_tags($userAgent);
 
 // =========================================================================
 // 4. TURNSTILE VERIFICATION
@@ -138,12 +138,12 @@ if (empty($firstName) || empty($lastName) || empty($url) || empty($service) || e
     exit;
 }
 
-$firstName    = htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8');
-$lastName     = htmlspecialchars($lastName, ENT_QUOTES, 'UTF-8');
-$url          = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
-$service      = htmlspecialchars($service, ENT_QUOTES, 'UTF-8');
-$specifyOther = htmlspecialchars($specifyOther, ENT_QUOTES, 'UTF-8');
-$message      = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+$firstName    = strip_tags($firstName);
+$lastName     = strip_tags($lastName);
+$url          = strip_tags($url);
+$service      = strip_tags($service);
+$specifyOther = strip_tags($specifyOther);
+$message      = strip_tags($message);
 
 // =========================================================================
 // 6. GOOGLE WORKSPACE / PHPMAILER PROCESSING
