@@ -5,24 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contact Us - {{CLINIC_NAME}}</title>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sen:wght@400..800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: "Sen", sans-serif;
+      font-optical-sizing: auto;
       margin: 0;
-      padding: 12px;
+      padding: 0px;
       color: #222;
-      background: #fff;
+      background: transparent;
     }
     .form-container {
-      max-width: 600px;
+      max-width: 700px;
       margin: 0;
     }
-    
+
     .form-row {
       display: flex;
       gap: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
     .form-col {
       flex: 1 1 0;
@@ -37,14 +41,14 @@
       display: block;
       font-weight: 600;
       margin-bottom: 4px;
-      font-size: 13px;
+      font-size: 14px;
       color: #111;
     }
     .required {
       color: #d32f2f;
       font-weight: bold;
     }
-    
+
     input[type="text"], input[type="email"], input[type="tel"], select, textarea {
       width: 100%;
       padding: 8px 10px;
@@ -69,7 +73,7 @@
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      margin: 10px 0 14px 0;
+      margin: 15px 0 15px 0;
       font-size: 12px;
       line-height: 1.4;
       color: #333;
@@ -89,15 +93,19 @@
     }
 
     .btn-submit {
+      display: block;
+      width: 50%;
+      margin: 1.5em 0;
       background-color: #1a568c;
       color: #fff;
       border: none;
       padding: 11px 20px;
-      font-size: 15px;
-      font-weight: 600;
+      font-family: "Sen", sans-serif;
+      font-optical-sizing: auto;
+      font-size: 16px;
+      font-weight: 400;
       border-radius: 4px;
       cursor: pointer;
-      width: 100%;
     }
     .btn-submit:hover {
       background-color: #13426b;
@@ -136,7 +144,8 @@
       text-align: left;
       margin: 12px 0 0 0;
       color: #0a0a0a;
-      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+      font-family: "Sen", sans-serif;
+      font-optical-sizing: auto;
       font-size: 11px;
       line-height: 1.8em;
       font-weight: 400;
@@ -216,7 +225,7 @@
     <div class="consent-group">
       <input type="checkbox" id="consent" name="consent" value="yes" required aria-required="true">
       <label for="consent">
-        By checking this box and submitting this form, I consent to the collection and processing of the information provided, which may include Protected Health Information (PHI). I authorize this practice to contact me via email, phone, text message, or voicemail. I acknowledge and understand that standard email and text messaging are not secure or encrypted methods of communication. I accept the risks of communicating via unencrypted email and text message (including the risk of unauthorized access or interception by third parties) and explicitly request and consent to receive email and text communications from this practice regarding my inquiry or care. <span class="required" aria-hidden="true">*</span>
+        By checking this box and submitting this form, I consent to the collection and processing of the information provided, which may include Protected Health Information (PHI). I authorize this practice to contact me via email, phone, text message, or voicemail. I acknowledge and understand that standard email and text messaging are not secure or encrypted methods of communication. I accept the risks of communicating via unencrypted email and text message (including the risk of unauthorized access or interception by third parties) and explicitly request and consent to receive email and text communications from this practice regarding my inquiry or <span style="white-space: nowrap;">care. <span class="required" aria-hidden="true">*</span></span>
       </label>
     </div>
 
@@ -253,10 +262,10 @@ document.getElementById('contact-form').addEventListener('submit', async functio
 
   try {
     const formData = new FormData(form);
-    const res = await fetch('submit-form.php', { 
-      method: 'POST', 
+    const res = await fetch('submit-form.php', {
+      method: 'POST',
       headers: { 'Accept': 'application/json' },
-      body: formData 
+      body: formData
     });
     const data = await res.json();
 
