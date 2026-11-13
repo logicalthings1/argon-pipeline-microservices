@@ -25,7 +25,7 @@
     .form-row {
       display: flex;
       gap: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
     .form-col {
       flex: 1 1 0;
@@ -72,7 +72,7 @@
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      margin: 10px 0 14px 0;
+      margin: 15px 0 15px 0;
       font-size: 12px;
       line-height: 1.4;
       color: #333;
@@ -94,13 +94,13 @@
     .btn-submit {
       display: block;
       width: 50%;
-      margin: 0 auto;
+      margin: 1.5em 0;
       background-color: #1a568c;
       color: #fff;
       border: none;
       padding: 11px 20px;
-      font-size: 15px;
-      font-weight: 600;
+      font-size: 16px;
+      font-weight: 400;
       border-radius: 4px;
       cursor: pointer;
     }
