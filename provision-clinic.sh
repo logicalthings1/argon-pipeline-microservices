@@ -177,4 +177,16 @@ if grep -q "# REGISTRY_ANCHOR" "$HOME/deploy-all.sh" 2>/dev/null; then
 else
   echo "3. deploy-all.sh anchor not found. Manually add: \"$SERVICE_NAME|\$HOME/$SERVICE_NAME|https://$CUSTOM_DOMAIN\""
 fi
+
+if [ -d "$HOME/.git" ]; then
+  if ! grep -qxF "!/${SERVICE_NAME}/" "$HOME/.gitignore" 2>/dev/null; then
+    sed -i "/!\/_template-form\//i !/${SERVICE_NAME}/" "$HOME/.gitignore"
+  fi
+  git -C "$HOME" add .gitignore deploy-all.sh "$SERVICE_NAME"
+  if git -C "$HOME" commit -m "Add ${SERVICE_NAME} service and register in deploy-all.sh" >/dev/null 2>&1 && git -C "$HOME" push origin main >/dev/null 2>&1; then
+    echo "4. Committed and pushed to Git (origin/main): [OK]"
+  else
+    echo "4. Git commit/push skipped or failed—run 'git status' in ~ to check."
+  fi
+fi
 echo "=================================================="
