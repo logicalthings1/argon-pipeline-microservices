@@ -180,8 +180,6 @@ try {
         sendViaSmtp($subject, $htmlBody, $textSummary, $senderEmail, $senderName, $clinicName);
     }
 
-    sendDiscordAlert($clinicName, $formType, $senderName, $senderEmail, $senderPhone);
-
     echo json_encode([
         'status'  => 'success',
         'message' => 'Thank you! Your inquiry has been securely delivered.'
@@ -189,7 +187,14 @@ try {
     exit;
 
 } catch (Exception $e) {
-    error_log("Dispatch error [{$mailDriver}]: " . $e->getMessage());
+    $errorMessage = $e->getMessage();
+    file_put_contents('php://stderr', json_encode([
+        'severity' => 'ERROR',
+        'message'  => "Dispatch error [{$mailDriver}]: {$errorMessage}"
+    ]) . "\n");
+
+    sendDiscordAlert($clinicName, $mailDriver, $errorMessage);
+
     http_response_code(500);
     echo json_encode([
         'status'  => 'error',
@@ -373,21 +378,28 @@ function sendViaSmtp(string $subject, string $htmlBody, string $textSummary, str
 // -----------------------------------------------------------------------------
 // Optional Discord Operational Webhook
 // -----------------------------------------------------------------------------
-function sendDiscordAlert(string $clinicName, string $formType, string $senderName, string $senderEmail, string $senderPhone): void {
-    $webhook = getenv('DISCORD_WEBHOOK_URL');
+function sendDiscordAlert(string $clinicName, string $mailDriver, string $errorMessage): void {
+    $webhook = getenv('DISCORD_WEBHOOK_URL') ?: getenv('ALERT_WEBHOOK_URL');
     if (!$webhook) {
+        file_put_contents('php://stderr', json_encode([
+            'severity' => 'WARNING',
+            'message'  => 'Discord Webhook skipped: DISCORD_WEBHOOK_URL environment variable is empty or not set.'
+        ]) . "\n");
         return;
     }
 
+    $domain = $_SERVER['HTTP_HOST'] ?? 'Unknown Domain';
+    $truncatedError = mb_substr($errorMessage, 0, 1000);
+
     $payload = [
         'embeds' => [[
-            'title'       => "New Form Submission: {$clinicName}",
-            'description' => "Received new **{$formType}**.",
-            'color'       => 0x1a568c,
+            'title'       => "Mailer Delivery Error: {$clinicName}",
+            'description' => "Form dispatch failed on **{$domain}**.",
+            'color'       => 0xdc2626,
             'fields'      => [
-                ['name' => 'Name',  'value' => $senderName ?: 'Not specified',  'inline' => true],
-                ['name' => 'Email', 'value' => $senderEmail ?: 'Not specified', 'inline' => true],
-                ['name' => 'Phone', 'value' => $senderPhone ?: 'Not specified', 'inline' => true],
+                ['name' => 'Driver', 'value' => strtoupper($mailDriver), 'inline' => true],
+                ['name' => 'Domain', 'value' => $domain,                 'inline' => true],
+                ['name' => 'Error',  'value' => $truncatedError ?: 'Unknown error', 'inline' => false],
             ],
             'footer'      => ['text' => 'Argon Pipeline'],
             'timestamp'   => date('c')
@@ -402,6 +414,14 @@ function sendDiscordAlert(string $clinicName, string $formType, string $senderNa
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 4
     ]);
-    curl_exec($ch);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+
+    if ($httpCode < 200 || $httpCode >= 300) {
+        file_put_contents('php://stderr', json_encode([
+            'severity' => 'WARNING',
+            'message'  => "Discord Webhook Failed. HTTP: {$httpCode} Response: {$response}"
+        ]) . "\n");
+    }
 }
