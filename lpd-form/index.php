@@ -7,11 +7,12 @@
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=AR+One+Sans:wght@400..700&family=Sen:wght@400..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sen:wght@400..800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
     body {
-      font-family: Sen, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: "Sen", sans-serif;
+      font-optical-sizing: auto;
       margin: 0;
       padding: 0px;
       color: #222;
@@ -99,6 +100,8 @@
       color: #fff;
       border: none;
       padding: 11px 20px;
+      font-family: "Sen", sans-serif;
+      font-optical-sizing: auto;
       font-size: 16px;
       font-weight: 400;
       border-radius: 4px;
@@ -141,7 +144,8 @@
       text-align: left;
       margin: 12px 0 0 0;
       color: #0a0a0a;
-      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+      font-family: "Sen", sans-serif;
+      font-optical-sizing: auto;
       font-size: 11px;
       line-height: 1.8em;
       font-weight: 400;
