@@ -3,7 +3,7 @@
 
 # 2. Whitelist infrastructure projects & automation scripts
 !/argon-form/
-!/marian-form/
+!/mwt-form/
 !/nwhs-form/
 !/rugeleydds-form/
 !/lpd-form/
