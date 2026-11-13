@@ -12,6 +12,7 @@ ALL_SERVICES=(
   "marian-form|$HOME/marian-form|https://mwt.argonpipeline.com"
   "nwhs-form|$HOME/nwhs-form|https://nwhs.argonpipeline.com"
   "rugeleydds-form|$HOME/rugeleydds-form|https://rugeleydds.argonpipeline.com"
+  "lpd-form|$HOME/lpd-form|https://lpd.argonpipeline.com"
   # REGISTRY_ANCHOR
 )
 
