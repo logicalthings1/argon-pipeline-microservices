@@ -73,27 +73,40 @@ if (empty($_POST['consent'])) {
 // -----------------------------------------------------------------------------
 // 4. Dynamic Field Extraction & Email Formatting
 // -----------------------------------------------------------------------------
-$clinicName   = getenv('CLINIC_NAME') ?: 'Argon Pipeline';
-$formType     = trim($_POST['form_type'] ?? 'Website Inquiry');
-$firstName    = trim($_POST['first_name'] ?? '');
-$lastName     = trim($_POST['last_name'] ?? '');
-$fullName     = trim($_POST['name'] ?? '');
-$senderName   = trim("$firstName $lastName") ?: ($fullName ?: 'Website Visitor');
-$senderEmail  = trim($_POST['email'] ?? '');
-$senderPhone  = trim($_POST['phone'] ?? '');
+$clinicName        = getenv('CLINIC_NAME') ?: 'Argon Pipeline';
+$senderDisplayName = getenv('SENDER_NAME') ?: 'LPD Office';
+$formType          = trim($_POST['form_type'] ?? 'Website Inquiry');
+$firstName         = trim($_POST['first_name'] ?? '');
+$lastName          = trim($_POST['last_name'] ?? '');
+$fullName          = trim($_POST['name'] ?? '');
+$senderName        = trim("$firstName $lastName") ?: ($fullName ?: 'Website Visitor');
+$senderEmail       = trim($_POST['email'] ?? '');
+$senderPhone       = trim($_POST['phone'] ?? '');
 
-$subject = "[{$clinicName}] New {$formType}: {$senderName}";
+$subject = "New website message from {$senderName}";
+
+// Readable label mapping for standard fields
+$labelMap = [
+    'first_name'    => 'First Name',
+    'last_name'     => 'Last Name',
+    'email'         => 'Email',
+    'phone'         => 'Phone',
+    'how_you_find'  => 'How Did You Find Us?',
+    'referal_name'  => 'Referral / Other Details',
+    'referral_name' => 'Referral / Other Details',
+    'message'       => 'Message',
+];
 
 // Build dynamic field rows (ignoring system/internal keys)
 $systemKeys = ['cf-turnstile-response', 'fax_number', 'consent', 'form_type'];
 $tableRows   = '';
-$textSummary = "NEW FORM SUBMISSION: {$clinicName}\nForm Type: {$formType}\n" . str_repeat('=', 40) . "\n\n";
+$textSummary = "NEW WEBSITE MESSAGE: {$clinicName}\n" . str_repeat('=', 40) . "\n\n";
 
 foreach ($_POST as $key => $val) {
     if (in_array($key, $systemKeys, true)) {
         continue;
     }
-    
+
     if (is_array($val)) {
         $cleanVal = implode(', ', array_map('trim', $val));
     } else {
@@ -104,21 +117,57 @@ foreach ($_POST as $key => $val) {
         continue;
     }
 
-    $label     = ucwords(str_replace(['_', '-'], ' ', $key));
-    $safeLabel = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
-    $safeVal   = nl2br(htmlspecialchars($cleanVal, ENT_QUOTES, 'UTF-8'));
+    $label      = $labelMap[$key] ?? ucwords(str_replace(['_', '-'], ' ', $key));
+    $safeLabel  = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+    $safeVal    = nl2br(htmlspecialchars($cleanVal, ENT_QUOTES, 'UTF-8'));
+    $displayVal = $safeVal;
+
+    if ($key === 'email' && filter_var($cleanVal, FILTER_VALIDATE_EMAIL)) {
+        $replySubj  = rawurlencode("Re: Website Message - {$clinicName}");
+        $displayVal = "<a href=\"mailto:{$safeVal}?subject={$replySubj}\" style=\"color: #554F9B; text-decoration: none; font-weight: 500;\">{$safeVal}</a>";
+    } elseif ($key === 'phone') {
+        $telHref = preg_replace('/[^0-9+]/', '', $cleanVal);
+        if ($telHref !== '') {
+            $displayVal = "<a href=\"tel:{$telHref}\" style=\"color: #554F9B; text-decoration: none; font-weight: 500;\">{$safeVal}</a>";
+        }
+    }
 
     $tableRows .= "
       <tr>
-        <td style=\"padding: 10px 14px; font-weight: 600; color: #333; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;\">{$safeLabel}</td>
-        <td style=\"padding: 10px 14px; color: #111; border-bottom: 1px solid #e2e8f0; vertical-align: top;\">{$safeVal}</td>
+        <td style=\"padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;\">{$safeLabel}</td>
+        <td style=\"padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;\">{$displayVal}</td>
       </tr>";
 
     $textSummary .= "{$label}: {$cleanVal}\n";
 }
 
-$submissionTime = date('F j, Y, g:i a e');
-$clientIp       = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+$replyButtonHtml = '';
+if (!empty($senderEmail) && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
+    $safeReplyEmail = htmlspecialchars($senderEmail, ENT_QUOTES, 'UTF-8');
+    $safeReplyName  = htmlspecialchars($senderName, ENT_QUOTES, 'UTF-8');
+    $replySubj      = rawurlencode("Re: Website Message - {$clinicName}");
+    $replyButtonHtml = "
+        <div style=\"margin-top: 20px; text-align: left;\">
+          <a href=\"mailto:{$safeReplyEmail}?subject={$replySubj}\" style=\"display: inline-block; background: #554F9B; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 4px; font-size: 14px; font-weight: 600;\">Reply to {$safeReplyName}</a>
+        </div>";
+}
+
+$tzName = getenv('TIMEZONE') ?: 'America/Chicago';
+try {
+    $dt = new DateTimeImmutable('now', new DateTimeZone($tzName));
+} catch (Exception $e) {
+    $dt = new DateTimeImmutable('now', new DateTimeZone('America/Chicago'));
+}
+$submissionTime = $dt->format('F j, Y, g:i a T');
+
+$forwardedFor = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+if ($forwardedFor !== '') {
+    $ipParts  = array_map('trim', explode(',', $forwardedFor));
+    $clientIp = $ipParts[0] ?: ($_SERVER['REMOTE_ADDR'] ?? 'Unknown');
+} else {
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+}
+$safeClientIp = htmlspecialchars($clientIp, ENT_QUOTES, 'UTF-8');
 
 $htmlBody = <<<HTML
 <!DOCTYPE html>
@@ -127,12 +176,12 @@ $htmlBody = <<<HTML
   <meta charset="UTF-8">
   <title>{$subject}</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #222; background: #f8fafc; margin: 0; padding: 24px;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #4A5568; background: #f6f6ff; margin: 0; padding: 24px;">
   <table role="presentation" style="max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; border-collapse: separate; border-spacing: 0; overflow: hidden; width: 100%;">
     <tr>
-      <td style="background: #1a568c; padding: 18px 24px; color: #ffffff;">
-        <h2 style="margin: 0; font-size: 19px; font-weight: 600;">{$clinicName}</h2>
-        <div style="font-size: 13px; opacity: 0.9; margin-top: 2px;">New {$formType} Received</div>
+      <td style="background: #554F9B; padding: 18px 24px; color: #ffffff;">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600;">{$clinicName}</h2>
+        <div style="font-size: 14px; opacity: 0.9; margin-top: 2px;">New Website Message Received</div>
       </td>
     </tr>
     <tr>
@@ -140,16 +189,16 @@ $htmlBody = <<<HTML
         <table role="presentation" style="width: 100%; border-collapse: collapse;">
           {$tableRows}
         </table>
-        
-        <div style="margin-top: 24px; padding: 14px; background: #f1f5f9; border-radius: 4px; font-size: 11px; color: #475569; line-height: 1.4;">
+        {$replyButtonHtml}
+        <div style="margin-top: 20px; padding: 14px; background: #f6f6ff; border-radius: 4px; font-size: 12px; color: #4A5568; line-height: 1.4;">
           <strong>PHI Consent & Authorization:</strong> The sender acknowledged the risks of communicating via unencrypted communication channels and consented to receive email and phone communications regarding their care.<br>
-          <strong>Submitted:</strong> {$submissionTime} | <strong>IP Address:</strong> {$clientIp}
+          <strong>Submitted:</strong> {$submissionTime} | <strong>IP Address:</strong> {$safeClientIp}
         </div>
       </td>
     </tr>
     <tr>
-      <td style="padding: 12px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b; text-align: center;">
-        Processed securely via <a href="https://argonpipeline.com" style="color: #1a568c; text-decoration: none;">Argon Pipeline</a>
+      <td style="padding: 12px 24px; background: #e6e6f9; border-top: 1px solid #e2e8f0; font-size: 11px; color: #4A5568; text-align: center;">
+        Processed securely via <a href="https://argonpipeline.com" style="color: #554F9B; text-decoration: none;">Argon Pipeline</a>
       </td>
     </tr>
   </table>
@@ -175,9 +224,9 @@ if (empty($mailDriver)) {
 
 try {
     if ($mailDriver === 'graph') {
-        sendViaGraph($subject, $htmlBody, $senderEmail, $senderName, $clinicName);
+        sendViaGraph($subject, $htmlBody, $senderEmail, $senderName, $senderDisplayName);
     } else {
-        sendViaSmtp($subject, $htmlBody, $textSummary, $senderEmail, $senderName, $clinicName);
+        sendViaSmtp($subject, $htmlBody, $textSummary, $senderEmail, $senderName, $senderDisplayName);
     }
 
     echo json_encode([
@@ -206,7 +255,7 @@ try {
 // -----------------------------------------------------------------------------
 // Dispatch Handler: Microsoft Graph API (OAuth 2.0)
 // -----------------------------------------------------------------------------
-function sendViaGraph(string $subject, string $htmlBody, string $senderEmail, string $senderName, string $clinicName): bool {
+function sendViaGraph(string $subject, string $htmlBody, string $senderEmail, string $senderName, string $senderDisplayName): bool {
     $tenantId     = getenv('MS_TENANT_ID');
     $clientId     = getenv('MS_CLIENT_ID');
     $clientSecret = getenv('MS_CLIENT_SECRET');
@@ -257,6 +306,12 @@ function sendViaGraph(string $subject, string $htmlBody, string $senderEmail, st
 
     $message = [
         'subject'      => $subject,
+        'from'         => [
+            'emailAddress' => [
+                'address' => $senderMail,
+                'name'    => $senderDisplayName
+            ]
+        ],
         'body'         => [
             'contentType' => 'HTML',
             'content'     => $htmlBody
