@@ -5,20 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contact Us - Leander Pediatric Dentistry</title>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=AR+One+Sans:wght@400..700&family=Sen:wght@400..800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: Sen, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
-      padding: 12px;
+      padding: 0px;
       color: #222;
       background: transparent;
     }
     .form-container {
-      max-width: 600px;
+      max-width: 700px;
       margin: 0;
     }
-    
+
     .form-row {
       display: flex;
       gap: 12px;
@@ -37,14 +40,14 @@
       display: block;
       font-weight: 600;
       margin-bottom: 4px;
-      font-size: 13px;
+      font-size: 14px;
       color: #111;
     }
     .required {
       color: #d32f2f;
       font-weight: bold;
     }
-    
+
     input[type="text"], input[type="email"], input[type="tel"], select, textarea {
       width: 100%;
       padding: 8px 10px;
@@ -89,6 +92,9 @@
     }
 
     .btn-submit {
+      display: block;
+      width: 50%;
+      margin: 0 auto;
       background-color: #1a568c;
       color: #fff;
       border: none;
@@ -97,7 +103,6 @@
       font-weight: 600;
       border-radius: 4px;
       cursor: pointer;
-      width: 100%;
     }
     .btn-submit:hover {
       background-color: #13426b;
@@ -253,10 +258,10 @@ document.getElementById('contact-form').addEventListener('submit', async functio
 
   try {
     const formData = new FormData(form);
-    const res = await fetch('submit-form.php', { 
-      method: 'POST', 
+    const res = await fetch('submit-form.php', {
+      method: 'POST',
       headers: { 'Accept': 'application/json' },
-      body: formData 
+      body: formData
     });
     const data = await res.json();
 
