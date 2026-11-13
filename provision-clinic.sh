@@ -86,7 +86,7 @@ if [ "$DRIVER_CHOICE" = "1" ]; then
   if [ -n "$BCC_EMAIL" ]; then
     ENV_VARS="${ENV_VARS},BCC_EMAIL=${BCC_EMAIL}"
   fi
-  SECRETS="MS_CLIENT_SECRET=${MAIL_SECRET_NAME}:latest,TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_NAME}:latest"
+  SECRETS="MS_CLIENT_SECRET=${MAIL_SECRET_NAME}:latest,TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_NAME}:latest,DISCORD_WEBHOOK_URL=argon-discord-webhook:latest"
 
 else
   MAIL_DRIVER="smtp"
@@ -112,7 +112,7 @@ else
   if [ -n "$BCC_EMAIL" ]; then
     ENV_VARS="${ENV_VARS},BCC_EMAIL=${BCC_EMAIL}"
   fi
-  SECRETS="SMTP_PASS=${MAIL_SECRET_NAME}:latest,TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_NAME}:latest"
+  SECRETS="SMTP_PASS=${MAIL_SECRET_NAME}:latest,TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_NAME}:latest,DISCORD_WEBHOOK_URL=argon-discord-webhook:latest"
 fi
 
 # 4. Clone Template & Replace Placeholders
