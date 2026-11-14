@@ -10,7 +10,7 @@
 	<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
 	<style>
 		* { box-sizing: border-box; }
-		body { font-family: Quicksand, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #222; background: #fff; }
+		body { font-family: Quicksand, sans-serif; margin: 0; padding: 0; color: #222; background: #fff; }
 		.form-container { max-width: 600px; margin: 0; }
 
 		/* Strict 2-Column Row (Desktop and Mobile) */
@@ -28,7 +28,7 @@
 		  margin-bottom: 10px;
 		}
 
-		label { display: block; font-family: Quicksand, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 600; margin-bottom: 4px; font-size: 13px; color: #111; }
+		label, legend { display: block; font-family: Quicksand, sans-serif; font-weight: 600; margin-bottom: 4px; font-size: 14px; color: #111; }
 		.required { color: #d32f2f; font-weight: bold; }
 
 		input[type="text"], input[type="email"], input[type="tel"], select, textarea {
@@ -42,10 +42,20 @@
 		  outline-offset: 1px;
 		}
 
+		/* Patient Type Radio Fieldset at Top */
+		fieldset.radio-fieldset {
+		  border: none;
+		  padding: 0;
+		  margin: 0 0 10px 0;
+		}
+		.radio-group { display: flex; gap: 20px; margin-top: 4px; }
+		.radio-group label { font-weight: normal; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; min-height: 28px; font-size: 13px; }
+		.radio-group input[type="radio"] { width: 16px; height: 16px; margin: 0; accent-color: #1a568c; }
+
 		/* Consent Checkbox */
-		.consent-group { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 14px 0; font-size: 12px; line-height: 1.4; color: #333; }
+		.consent-group { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 14px 0; font-size: 13px; line-height: 1.4; color: #333; }
 		.consent-group input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: #1a568c; cursor: pointer; }
-		.consent-group label { font-weight: normal; cursor: pointer; margin: 0; }
+		.consent-group label { font-size: 13px; font-weight: normal; cursor: pointer; margin: 0; }
 
 		/* Submit Button */
 		/*.btn-submit { background-color: #1a568c; color: #fff; border: none; padding: 11px 20px; font-size: 15px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }*/
@@ -60,7 +70,7 @@
 			border-width: 0px;
 			border-color: rgba(255, 255, 255, 0);
 			border-radius: 4px;
-			padding: 15px 25px;
+			padding: 10px 15px;
 			cursor: pointer;
 		}
 		.btn-submit:hover { background-color: #000000; }
