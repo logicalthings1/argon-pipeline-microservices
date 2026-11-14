@@ -46,7 +46,7 @@
 
     /* Submit Button */
     .btn-submit { background-color: #93dded; color: #000000; border: none; padding: 0.75rem 1.5rem; font-size: 16px; font-weight: 500; border-radius: 9999px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-    .btn-submit:hover { background-color: #13426b; }
+    .btn-submit:hover { background-color: #A7E1ED; }
     .btn-submit:disabled { background-color: #728496; cursor: not-allowed; }
 
     .honeypot { display: none !important; }
