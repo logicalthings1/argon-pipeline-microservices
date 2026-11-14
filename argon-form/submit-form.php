@@ -146,8 +146,117 @@ $specifyOther = strip_tags($specifyOther);
 $message      = strip_tags($message);
 
 // =========================================================================
-// 6. GOOGLE WORKSPACE / PHPMAILER PROCESSING
+// 6. HTML EMAIL FORMATTING & GOOGLE WORKSPACE / PHPMAILER PROCESSING
 // =========================================================================
+$clinicName        = getenv('CLINIC_NAME') ?: 'Argon Pipeline';
+$senderDisplayName = getenv('SENDER_NAME') ?: 'Argon Pipeline System';
+$senderName        = trim("$firstName $lastName");
+$subject           = "New website message from {$senderName}";
+
+$fields = [
+    'First Name'            => $firstName,
+    'Last Name'             => $lastName,
+    'Email'                 => (string)$email,
+    'Website URL'           => $url,
+    'Office Suite'          => ucfirst($service),
+    'Specified Other Suite' => $specifyOther,
+    'Message'               => $message,
+];
+
+$tableRows   = '';
+$textSummary = "NEW WEBSITE MESSAGE: {$clinicName}\n" . str_repeat('=', 40) . "\n\n";
+
+foreach ($fields as $label => $cleanVal) {
+    if ($cleanVal === '') {
+        continue;
+    }
+
+    $safeLabel  = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+    $safeVal    = nl2br(htmlspecialchars($cleanVal, ENT_QUOTES, 'UTF-8'));
+    $displayVal = $safeVal;
+
+    if ($label === 'Email') {
+        $replySubj  = rawurlencode("Re: Website Message - {$clinicName}");
+        $displayVal = "<a href=\"mailto:{$safeVal}?subject={$replySubj}\" style=\"color: #554F9B; text-decoration: none; font-weight: 500;\">{$safeVal}</a>";
+    } elseif ($label === 'Website URL') {
+        $hrefUrl = preg_match('~^https?://~i', $cleanVal) ? $cleanVal : 'https://' . $cleanVal;
+        if (filter_var($hrefUrl, FILTER_VALIDATE_URL)) {
+            $safeHref   = htmlspecialchars($hrefUrl, ENT_QUOTES, 'UTF-8');
+            $displayVal = "<a href=\"{$safeHref}\" target=\"_blank\" rel=\"noopener\" style=\"color: #554F9B; text-decoration: none; font-weight: 500;\">{$safeVal}</a>";
+        }
+    }
+
+    $tableRows .= "
+      <tr>
+        <td style=\"padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;\">{$safeLabel}</td>
+        <td style=\"padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;\">{$displayVal}</td>
+      </tr>";
+
+    $textSummary .= "{$label}: {$cleanVal}\n";
+}
+
+$safeReplyEmail  = htmlspecialchars((string)$email, ENT_QUOTES, 'UTF-8');
+$safeReplyName   = htmlspecialchars($senderName, ENT_QUOTES, 'UTF-8');
+$replySubj       = rawurlencode("Re: Website Message - {$clinicName}");
+$replyButtonHtml = "
+        <div style=\"margin-top: 20px; text-align: left;\">
+          <a href=\"mailto:{$safeReplyEmail}?subject={$replySubj}\" style=\"display: inline-block; background: #554F9B; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 4px; font-size: 14px; font-weight: 600;\">Reply to {$safeReplyName}</a>
+        </div>";
+
+if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    $ipParts  = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+    $clientIp = $ipParts[0] ?: ($userIp ?? $_SERVER['REMOTE_ADDR'] ?? 'Unknown');
+} else {
+    $clientIp = $userIp ?? $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+}
+$safeClientIp = htmlspecialchars(strip_tags($clientIp), ENT_QUOTES, 'UTF-8');
+
+$tzName = getenv('TIMEZONE') ?: 'America/Chicago';
+try {
+    $dt = new DateTimeImmutable('now', new DateTimeZone($tzName));
+} catch (Exception $e) {
+    $dt = new DateTimeImmutable('now', new DateTimeZone('America/Chicago'));
+}
+$submissionTime = $dt->format('F j, Y, g:i a T');
+
+$htmlBody = <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{$subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #4A5568; background: #f6f6ff; margin: 0; padding: 24px;">
+  <table role="presentation" style="max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; border-collapse: separate; border-spacing: 0; overflow: hidden; width: 100%;">
+    <tr>
+      <td style="background: #554F9B; padding: 18px 24px; color: #ffffff;">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600;">{$clinicName}</h2>
+        <div style="font-size: 14px; opacity: 0.9; margin-top: 2px;">New Website Message Received</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 20px 24px;">
+        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+          {$tableRows}
+        </table>
+        {$replyButtonHtml}
+        <div style="margin-top: 20px; padding: 14px; background: #f6f6ff; border-radius: 4px; font-size: 12px; color: #4A5568; line-height: 1.4;">
+          <strong>Submitted:</strong> {$submissionTime} | <strong>IP Address:</strong> {$safeClientIp}
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 12px 24px; background: #e6e6f9; border-top: 1px solid #e2e8f0; font-size: 11px; color: #4A5568; text-align: center;">
+        Processed securely via <a href="https://argonpipeline.com" style="color: #554F9B; text-decoration: none;">Argon Pipeline</a>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+HTML;
+
+$textSummary .= "\n" . str_repeat('=', 40) . "\nSubmitted: {$submissionTime}\nIP Address: {$clientIp}\n";
+
 $smtpHost = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
 $smtpUser = getenv('SMTP_USER') ?: 'art@logicalthings.com';
 $smtpPass = getenv('SMTP_PASS');
@@ -156,36 +265,26 @@ $smtpPort = (int)(getenv('SMTP_PORT') ?: 465);
 try {
     $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
 
+    $mail->CharSet    = 'UTF-8';
     $mail->isSMTP();
     $mail->Host       = $smtpHost;
     $mail->SMTPAuth   = true;
     $mail->Username   = $smtpUser;
     $mail->Password   = $smtpPass;
-    $mail->SMTPSecure = 'ssl';
     $mail->Port       = $smtpPort;
+    $mail->SMTPSecure = ($smtpPort === 465)
+        ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS
+        : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
 
-    $mail->setFrom($smtpUser, 'Argon Pipeline System'); 
-    $mail->addAddress('art@logicalthings.com'); 
-    $mail->addReplyTo($email, "$firstName $lastName");
+    $mail->setFrom($smtpUser, $senderDisplayName);
+    $mail->addAddress('art@logicalthings.com');
+    $mail->addReplyTo((string)$email, $senderName);
 
-    $mail->Subject = "New Argon Pipeline Inquiry from $firstName $lastName";
+    $mail->isHTML(true);
+    $mail->Subject = $subject;
+    $mail->Body    = $htmlBody;
+    $mail->AltBody = $textSummary;
 
-    $emailBody  = "You have received a new inquiry via the Argon Pipeline form:\n\n";
-    $emailBody .= "----------------------------------------\n";
-    $emailBody .= "First Name: " . $firstName . "\n";
-    $emailBody .= "Last Name: " . $lastName . "\n";
-    $emailBody .= "Email: " . $email . "\n";
-    $emailBody .= "Website URL: " . $url . "\n";
-    $emailBody .= "Office Suite: " . ucfirst($service) . "\n";
-    if (!empty($specifyOther)) {
-        $emailBody .= "Specified Other Suite: " . $specifyOther . "\n";
-    }
-    $emailBody .= "Message:\n" . $message . "\n";
-    $emailBody .= "----------------------------------------\n\n";
-    $emailBody .= "IP Address: https://www.ip2location.com/demo/" . $userIp . "\n";
-    $emailBody .= "User Agent: " . $userAgent . "\n";
-
-    $mail->Body = $emailBody;
     $mail->send();
 
 // =========================================================================
