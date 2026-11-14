@@ -42,7 +42,7 @@
     /* Consent Checkbox */
     .consent-group { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 14px 0; font-size: 12px; line-height: 1.4; color: #333; }
     .consent-group input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: #1a568c; cursor: pointer; }
-    .consent-group label { font-weight: normal; cursor: pointer; margin: 0; }
+    .consent-group label { font-size: 12px; font-weight: normal; cursor: pointer; margin: 0; }
 
     /* Submit Button */
     .btn-submit { background-color: #93dded; color: #000000; border: none; padding: 0.75rem 1.5rem; font-size: 16px; font-weight: 500; border-radius: 9999px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
@@ -146,7 +146,7 @@
     <div class="consent-group">
       <input type="checkbox" id="consent" name="consent" value="yes" required aria-required="true">
       <label for="consent">
-        By checking this box and submitting this form, I consent to the collection and processing of the information provided, which may include Protected Health Information (PHI). I authorize this practice to contact me via email, phone, text message, or voicemail. I acknowledge and understand that standard email and text messaging are not secure or encrypted methods of communication. I accept the risks of communicating via unencrypted email and text message (including the risk of unauthorized access or interception by third parties) and explicitly request and consent to receive email and text communications from this practice regarding my inquiry or care. <span class="required" aria-hidden="true">*</span>
+        By checking this box and submitting this form, I consent to the collection and processing of the information provided, which may include Protected Health Information (PHI). I authorize this practice to contact me via email, phone, text message, or voicemail. I acknowledge and understand that standard email and text messaging are not secure or encrypted methods of communication. I accept the risks of communicating via unencrypted email and text message (including the risk of unauthorized access or interception by third parties) and explicitly request and consent to receive email and text communications from this practice regarding my inquiry or <span style="white-space: nowrap;">care. <span class="required" aria-hidden="true">*</span></span>
       </label>
     </div>
 
