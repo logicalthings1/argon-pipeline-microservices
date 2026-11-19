@@ -9,7 +9,7 @@ REQUESTED_SERVICES=()
 # Canonical service registry: name|source_directory|health_check_url
 ALL_SERVICES=(
   "argon-form|$HOME/argon-form|https://argon.argonpipeline.com"
-  "marian-form|$HOME/marian-form|https://mwt.argonpipeline.com"
+  "mwt-form|$HOME/mwt-form|https://mwt.argonpipeline.com"
   "nwhs-form|$HOME/nwhs-form|https://nwhs.argonpipeline.com"
   "rugeleydds-form|$HOME/rugeleydds-form|https://rugeleydds.argonpipeline.com"
   "lpd-form|$HOME/lpd-form|https://lpd.argonpipeline.com"
