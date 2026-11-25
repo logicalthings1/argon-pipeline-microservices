@@ -27,7 +27,7 @@ $turnstileToken  = $_POST['cf-turnstile-response'] ?? '';
 if (!empty($turnstileSecret)) {
     if (empty($turnstileToken)) {
         http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'Turnstile verification failed: missing security token.']);
+        echo json_encode(['status' => 'error', 'message' => 'Please complete the security check.']);
         exit;
     }
 
@@ -53,7 +53,7 @@ if (!empty($turnstileSecret)) {
         exit;
     }
 
-    $verifyData = json_decode($verifyResult, true);
+    $verifyData = json_decode((string)$verifyResult, true);
     if (!$verifyData || empty($verifyData['success'])) {
         http_response_code(400);
         echo json_encode(['status' => 'error', 'message' => 'Security challenge failed. Please refresh and try again.']);
@@ -62,11 +62,37 @@ if (!empty($turnstileSecret)) {
 }
 
 // -----------------------------------------------------------------------------
-// 3. PHI Consent Verification
+// 3. Required Fields & PHI Consent Validation (WCAG 2.1 AA Field-Level Errors)
 // -----------------------------------------------------------------------------
-if (empty($_POST['consent'])) {
-    http_response_code(400);
-    echo json_encode(['status' => 'error', 'message' => 'You must accept the communication and PHI consent agreement to submit.']);
+$firstName   = trim((string)($_POST['first_name'] ?? ''));
+$lastName    = trim((string)($_POST['last_name'] ?? ''));
+$emailRaw    = trim((string)($_POST['email'] ?? ''));
+$email       = filter_var($emailRaw, FILTER_VALIDATE_EMAIL);
+$phone       = trim((string)($_POST['phone'] ?? ''));
+$howYouFind  = trim((string)($_POST['how_you_find'] ?? ''));
+$referalName = trim((string)($_POST['referal_name'] ?? ''));
+$message     = trim((string)($_POST['message'] ?? ''));
+$consent     = trim((string)($_POST['consent'] ?? ''));
+
+$fieldErrors = [];
+if ($firstName === '')  $fieldErrors['first_name']   = 'First Name is required.';
+if ($lastName === '')   $fieldErrors['last_name']    = 'Last Name is required.';
+if (!$email)            $fieldErrors['email']        = 'Enter a valid email address.';
+if ($phone === '')      $fieldErrors['phone']        = 'Phone number is required.';
+if ($howYouFind === '') $fieldErrors['how_you_find'] = 'Please select how you found us.';
+if ($howYouFind === 'Other' && $referalName === '') {
+    $fieldErrors['referal_name'] = 'Please provide your referral or other details.';
+}
+if ($message === '')    $fieldErrors['message']      = 'Message is required.';
+if ($consent !== 'yes') $fieldErrors['consent']      = 'You must check the consent box to submit your message.';
+
+if (!empty($fieldErrors)) {
+    http_response_code(422);
+    echo json_encode([
+        'status'       => 'error',
+        'message'      => 'Please correct the highlighted fields and try again.',
+        'field_errors' => $fieldErrors
+    ]);
     exit;
 }
 
@@ -75,13 +101,11 @@ if (empty($_POST['consent'])) {
 // -----------------------------------------------------------------------------
 $clinicName        = getenv('CLINIC_NAME') ?: 'Argon Pipeline';
 $senderDisplayName = getenv('SENDER_NAME') ?: 'LPD Office';
-$formType          = trim($_POST['form_type'] ?? 'Website Inquiry');
-$firstName         = trim($_POST['first_name'] ?? '');
-$lastName          = trim($_POST['last_name'] ?? '');
-$fullName          = trim($_POST['name'] ?? '');
+$formType          = trim((string)($_POST['form_type'] ?? 'Website Inquiry'));
+$fullName          = trim((string)($_POST['name'] ?? ''));
 $senderName        = trim("$firstName $lastName") ?: ($fullName ?: 'Website Visitor');
-$senderEmail       = trim($_POST['email'] ?? '');
-$senderPhone       = trim($_POST['phone'] ?? '');
+$senderEmail       = (string)$email;
+$senderPhone       = $phone;
 
 $subject = "New website message from {$senderName}";
 

@@ -14,7 +14,7 @@
       font-family: "Sen", sans-serif;
       font-optical-sizing: auto;
       margin: 0;
-      padding: 0px;
+      padding: 0;
       color: #222;
       background: transparent;
     }
@@ -23,6 +23,7 @@
       margin: 0;
     }
 
+    /* 2-Column Row on Desktop, Single Column on Mobile (WCAG 1.4.10 Reflow) */
     .form-row {
       display: flex;
       gap: 12px;
@@ -36,6 +37,14 @@
       width: 100%;
       margin-bottom: 10px;
     }
+    @media (max-width: 480px) {
+      .form-row {
+        flex-direction: column;
+      }
+      .btn-submit {
+        width: 100% !important;
+      }
+    }
 
     label {
       display: block;
@@ -45,11 +54,11 @@
       color: #111;
     }
     .required {
-      color: #d32f2f;
+      color: #b71c1c;
       font-weight: bold;
     }
 
-    input[type="text"], input[type="email"], input[type="tel"], select, textarea {
+    input[type="text"], input[type="email"], input[type="tel"], input[type="url"], select, textarea {
       width: 100%;
       padding: 8px 10px;
       border: 1px solid #767676;
@@ -59,24 +68,72 @@
       background-color: #fff;
       font-family: inherit;
     }
+    ::placeholder {
+      color: #595959;
+      opacity: 1;
+    }
     textarea {
       height: 70px;
       resize: vertical;
     }
 
-    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
-      outline: 2px solid #1a568c;
-      outline-offset: 1px;
+    /* WCAG 2.1 AA Invalid Field & Error States */
+    [aria-invalid="true"] {
+      border: 2px solid #b71c1c !important;
+      background-color: #fffafa !important;
+    }
+    input[type="checkbox"][aria-invalid="true"] {
+      outline: 2px solid #b71c1c;
+      outline-offset: 2px;
+    }
+    .ap-field-error {
+      display: block;
+      color: #b71c1c;
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    .ap-field-error:empty {
+      display: none;
+    }
+    .ap-error-summary {
+      border-left: 4px solid #b71c1c;
+      background-color: #fff5f5;
+      color: #7f1d1d;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      border-radius: 4px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .ap-error-summary ul {
+      margin: 6px 0 0 0;
+      padding-left: 20px;
+    }
+    .ap-error-summary li {
+      margin-bottom: 4px;
+    }
+    .ap-error-summary a {
+      color: #7f1d1d;
+      font-weight: 700;
+      text-decoration: underline;
+    }
+
+    /* WCAG Focus Indicators */
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, .ap-error-summary:focus-visible, .ap-error-summary a:focus-visible {
+      outline: 3px solid #1a568c;
+      outline-offset: 2px;
     }
 
     .consent-group {
       display: flex;
+      flex-wrap: wrap;
       align-items: flex-start;
       gap: 8px;
       margin: 15px 0 15px 0;
       font-size: 12px;
       line-height: 1.4;
-      color: #333;
+      color: #222;
     }
     .consent-group input[type="checkbox"] {
       width: 18px;
@@ -87,9 +144,14 @@
       cursor: pointer;
     }
     .consent-group label {
+      flex: 1 1 calc(100% - 26px);
       font-weight: normal;
       cursor: pointer;
       margin: 0;
+    }
+    .consent-group .ap-field-error {
+      flex-basis: 100%;
+      margin-left: 26px;
     }
 
     .btn-submit {
@@ -128,17 +190,6 @@
       border-radius: 4px;
       text-align: left;
     }
-    #error-message {
-      display: none;
-      background: #ffebee;
-      border: 2px solid #c62828;
-      color: #b71c1c;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 12px;
-      font-size: 13px;
-      line-height: 1.4;
-    }
 
     .attribution {
       text-align: left;
@@ -155,7 +206,7 @@
       letter-spacing: 0.5px;
     }
     .attribution a {
-      color: #555;
+      color: #4a4a4a;
       text-decoration: none;
     }
     .attribution a:hover, .attribution a:focus-visible {
@@ -166,10 +217,9 @@
 </head>
 <body>
 <main class="form-container">
-  <div id="error-message" role="alert" aria-live="assertive"></div>
   <div id="success-message" role="status" aria-live="polite" tabindex="-1">
-    <h3 style="margin-top: 0;">Thank you!</h3>
-    <p>Your message has been securely sent to our front desk team. We will be in touch shortly.</p>
+    <h2 style="margin-top: 0; font-size: 1.25rem;">Thank you!</h2>
+    <p style="margin-bottom: 0;">Your message has been securely sent to our front desk team. We will be in touch shortly.</p>
   </div>
 
   <form id="contact-form" action="submit-form.php" method="POST" novalidate aria-label="Contact Us Form">
@@ -203,7 +253,7 @@
       <div class="form-col">
         <label for="how_you_find">How did you find us? <span class="required" aria-hidden="true">*</span></label>
         <select id="how_you_find" name="how_you_find" required aria-required="true">
-          <option value="" disabled selected>Please select</option>
+          <option value="" disabled selected hidden>Please select</option>
           <option value="Google">Google / Search</option>
           <option value="AI/ChatGPT/Gemini">AI / ChatGPT / Gemini</option>
           <option value="Insurance">Insurance Provider</option>
@@ -212,7 +262,7 @@
         </select>
       </div>
       <div class="form-col">
-        <label for="referal_name">Referral / Other Details</label>
+        <label for="referal_name" id="referal_name_label">Referral / Other Details</label>
         <input type="text" id="referal_name" name="referal_name" placeholder="Name or source">
       </div>
     </div>
@@ -242,60 +292,276 @@
 </main>
 
 <script>
-document.getElementById('contact-form').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const form = this;
+(function () {
+  const form = document.getElementById('contact-form');
   const btn = document.getElementById('submit-btn');
-  const errorDiv = document.getElementById('error-message');
   const successDiv = document.getElementById('success-message');
 
-  if (!form.checkValidity()) {
-    errorDiv.innerText = 'Please complete all required fields and accept the consent agreement before submitting.';
-    errorDiv.style.display = 'block';
-    errorDiv.focus();
-    return;
+  // Automatic iframe height reporting via ResizeObserver
+  function sendHeightToParent() {
+    if (!window.parent || window.parent === window) return;
+    const container = document.querySelector('.form-container') || document.body;
+    const exactHeight = Math.ceil(container.getBoundingClientRect().height) + 12;
+    window.parent.postMessage({
+      action: 'argonResize',
+      height: exactHeight
+    }, '*');
   }
 
-  errorDiv.style.display = 'none';
-  btn.disabled = true;
-  btn.innerText = 'Sending...';
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(() => sendHeightToParent());
+    ro.observe(document.body);
+    const container = document.querySelector('.form-container');
+    if (container) ro.observe(container);
+  }
+  window.addEventListener('load', sendHeightToParent);
 
-  try {
-    const formData = new FormData(form);
-    const res = await fetch('submit-form.php', {
-      method: 'POST',
-      headers: { 'Accept': 'application/json' },
-      body: formData
+  // Toggle conditional requirement when "Referral / Other" is selected
+  const howSelect = document.getElementById('how_you_find');
+  const referalInput = document.getElementById('referal_name');
+  const referalLabel = document.getElementById('referal_name_label');
+
+  if (howSelect && referalInput) {
+    howSelect.addEventListener('change', function () {
+      const isOther = howSelect.value === 'Other';
+      if (isOther) {
+        referalInput.setAttribute('required', '');
+        referalInput.setAttribute('aria-required', 'true');
+        if (referalLabel && !referalLabel.querySelector('.required')) {
+          referalLabel.insertAdjacentHTML('beforeend', ' <span class="required" aria-hidden="true">*</span>');
+        }
+      } else {
+        referalInput.removeAttribute('required');
+        referalInput.removeAttribute('aria-required');
+        referalInput.removeAttribute('aria-invalid');
+        const errSpan = document.getElementById('referal_name-error');
+        if (errSpan) errSpan.textContent = '';
+        const reqMark = referalLabel ? referalLabel.querySelector('.required') : null;
+        if (reqMark) reqMark.remove();
+      }
+      sendHeightToParent();
     });
-    const data = await res.json();
+  }
 
-    if (data.status === 'success' || data.success === true) {
-      form.style.display = 'none';
-      successDiv.style.display = 'block';
-      successDiv.focus();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      window.parent.postMessage({ action: 'formSubmittedSuccess' }, '*');
-    } else {
-      errorDiv.innerText = data.message || data.error || 'An error occurred while submitting.';
-      errorDiv.style.display = 'block';
-      errorDiv.focus();
+  // Dynamic, field-agnostic WCAG 2.1 AA validation helpers
+  function getFieldLabel(targetForm, input) {
+    if (input.type === 'checkbox' && input.id === 'consent') {
+      return 'HIPAA & Electronic Communication Consent';
+    }
+    if (input.id) {
+      const explicitLabel = targetForm.querySelector(`label[for="${CSS.escape(input.id)}"]`);
+      if (explicitLabel) return explicitLabel.textContent.replace(/\*/g, '').trim();
+    }
+    const parentLabel = input.closest('label');
+    if (parentLabel) return parentLabel.textContent.replace(/\*/g, '').trim();
+    return input.getAttribute('aria-label') || input.name || 'This field';
+  }
+
+  function ensureErrorSummary(targetForm) {
+    let summary = targetForm.querySelector('.ap-error-summary');
+    if (!summary) {
+      summary = document.createElement('div');
+      summary.className = 'ap-error-summary';
+      summary.setAttribute('role', 'alert');
+      summary.setAttribute('aria-live', 'assertive');
+      summary.setAttribute('tabindex', '-1');
+      summary.hidden = true;
+      targetForm.prepend(summary);
+    }
+    return summary;
+  }
+
+  function ensureFieldErrorSpan(input) {
+    if (!input.id) {
+      input.id = 'ap-field-' + Math.random().toString(36).slice(2, 9);
+    }
+    const errId = `${input.id}-error`;
+    let errSpan = document.getElementById(errId);
+    if (!errSpan) {
+      errSpan = document.createElement('span');
+      errSpan.id = errId;
+      errSpan.className = 'ap-field-error';
+      if (input.type === 'checkbox') {
+        const group = input.closest('.consent-group');
+        if (group) {
+          group.appendChild(errSpan);
+        } else {
+          input.insertAdjacentElement('afterend', errSpan);
+        }
+      } else {
+        input.insertAdjacentElement('afterend', errSpan);
+      }
+    }
+    const describedBy = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    if (!describedBy.includes(errId)) {
+      describedBy.push(errId);
+      input.setAttribute('aria-describedby', describedBy.join(' '));
+    }
+    return errSpan;
+  }
+
+  function isVisible(el) {
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  }
+
+  function validateSingleField(targetForm, input) {
+    if (!isVisible(input) || input.disabled) return null;
+
+    const label = getFieldLabel(targetForm, input);
+    const val = (input.value || '').trim();
+    const isRequired = input.hasAttribute('required') || input.getAttribute('aria-required') === 'true';
+
+    if (input.type === 'checkbox' && isRequired && !input.checked) {
+      return 'You must check the consent box to submit your message.';
+    }
+    if (isRequired && val.length === 0) {
+      return `${label} is required.`;
+    }
+    if (val.length > 0 && input.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      return `Enter a valid email address for ${label} (for example, name@domain.com).`;
+    }
+    if (val.length > 0 && input.type === 'tel' && val.replace(/\D/g, '').length < 10) {
+      return `Enter a valid 10-digit phone number for ${label}.`;
+    }
+    if (val.length > 0 && input.type === 'url') {
+      try {
+        const parsed = new URL(val.startsWith('http') ? val : `https://${val}`);
+        if (!parsed.hostname.includes('.')) throw new Error('Invalid host');
+      } catch {
+        return `Enter a valid website URL for ${label}.`;
+      }
+    }
+    return null;
+  }
+
+  function validateForm(targetForm) {
+    const summary = ensureErrorSummary(targetForm);
+    const fields = Array.from(targetForm.querySelectorAll('input, select, textarea'))
+      .filter(el => el.type !== 'hidden' && el.type !== 'submit' && el.type !== 'button' && !el.closest('.honeypot'));
+
+    const errors = [];
+
+    fields.forEach(input => {
+      const errSpan = ensureFieldErrorSpan(input);
+      const message = validateSingleField(targetForm, input);
+
+      if (message) {
+        input.setAttribute('aria-invalid', 'true');
+        errSpan.textContent = message;
+        errors.push({ input, label: getFieldLabel(targetForm, input), message });
+      } else {
+        input.removeAttribute('aria-invalid');
+        errSpan.textContent = '';
+      }
+    });
+
+    if (errors.length > 0) {
+      summary.innerHTML =
+        `<strong>Please fix ${errors.length} ${errors.length === 1 ? 'error' : 'errors'} before submitting:</strong>` +
+        `<ul>` +
+        errors.map(e => `<li><a href="#${e.input.id}">${e.label}:</a> ${e.message}</li>`).join('') +
+        `</ul>`;
+      summary.hidden = false;
+      sendHeightToParent();
+      errors[0].input.focus();
+      return false;
+    }
+
+    summary.hidden = true;
+    summary.innerHTML = '';
+    sendHeightToParent();
+    return true;
+  }
+
+  function showServerError(targetForm, message, fieldErrors) {
+    const summary = ensureErrorSummary(targetForm);
+    const extraLinks = [];
+
+    if (fieldErrors && typeof fieldErrors === 'object') {
+      Object.entries(fieldErrors).forEach(([fieldName, msg]) => {
+        const input = targetForm.querySelector(`[name="${CSS.escape(fieldName)}"]`);
+        if (input) {
+          const errSpan = ensureFieldErrorSpan(input);
+          input.setAttribute('aria-invalid', 'true');
+          errSpan.textContent = msg;
+          extraLinks.push(`<li><a href="#${input.id}">${getFieldLabel(targetForm, input)}:</a> ${msg}</li>`);
+        }
+      });
+    }
+
+    summary.innerHTML = `<strong>Unable to send message:</strong> ${message}` +
+      (extraLinks.length ? `<ul>${extraLinks.join('')}</ul>` : '');
+    summary.hidden = false;
+    sendHeightToParent();
+    summary.focus();
+  }
+
+  // Clear field-level error immediately as the user corrects their input
+  ['input', 'change'].forEach(evt => {
+    form.addEventListener(evt, function (e) {
+      const input = e.target;
+      if (input && input.getAttribute('aria-invalid') === 'true') {
+        const msg = validateSingleField(form, input);
+        if (!msg) {
+          input.removeAttribute('aria-invalid');
+          const errSpan = document.getElementById(`${input.id}-error`);
+          if (errSpan) errSpan.textContent = '';
+          sendHeightToParent();
+        }
+      }
+    });
+  });
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    if (!validateForm(form)) {
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = 'Sending...';
+
+    try {
+      const formData = new FormData(form);
+      const res = await fetch('submit-form.php', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: formData
+      });
+      const data = await res.json();
+
+      if (res.ok && (data.status === 'success' || data.success === true)) {
+        form.style.display = 'none';
+        successDiv.style.display = 'block';
+        sendHeightToParent();
+        successDiv.focus();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ action: 'formSubmittedSuccess' }, '*');
+        }
+      } else {
+        showServerError(
+          form,
+          data.message || data.error || 'An error occurred while submitting.',
+          data.field_errors
+        );
+        btn.disabled = false;
+        btn.innerText = 'Send Message';
+        if (window.turnstile && typeof window.turnstile.reset === 'function') {
+          window.turnstile.reset();
+        }
+      }
+    } catch (err) {
+      showServerError(form, 'Unable to send message right now. Please try again.');
       btn.disabled = false;
       btn.innerText = 'Send Message';
       if (window.turnstile && typeof window.turnstile.reset === 'function') {
         window.turnstile.reset();
       }
     }
-  } catch (err) {
-    errorDiv.innerText = 'Unable to send message right now. Please try again.';
-    errorDiv.style.display = 'block';
-    errorDiv.focus();
-    btn.disabled = false;
-    btn.innerText = 'Send Message';
-    if (window.turnstile && typeof window.turnstile.reset === 'function') {
-      window.turnstile.reset();
-    }
-  }
-});
+  });
+})();
 </script>
 </body>
 </html>
