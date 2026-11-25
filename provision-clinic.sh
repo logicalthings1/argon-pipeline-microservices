@@ -78,14 +78,20 @@ if [ "$DRIVER_CHOICE" = "1" ]; then
   read -rp "Sender Mailbox (e.g. info@clinic.com): " SENDER_EMAIL
   read -rp "Recipient Address(es) (comma-separated): " RECIPIENT_EMAIL
   read -rp "BCC Address(es) (optional, press Enter to skip): " BCC_EMAIL
+  read -rp "Non-PHI SEO Attribution Email [art@logicalthings.com] (enter 'none' to skip): " SEO_ATTRIBUTION_EMAIL
+  SEO_ATTRIBUTION_EMAIL="${SEO_ATTRIBUTION_EMAIL:-art@logicalthings.com}"
 
   MAIL_SECRET_NAME="${SERVICE_NAME}-ms-secret"
   echo "Saving Azure Client Secret in Secret Manager..."
   upsert_secret "$MAIL_SECRET_NAME" "$MS_CLIENT_SECRET"
 
-  ENV_VARS="MAIL_DRIVER=graph,CLINIC_NAME=${CLINIC_NAME},CLIENT_DOMAIN=${CLIENT_DOMAIN},TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY},MS_TENANT_ID=${MS_TENANT_ID},MS_CLIENT_ID=${MS_CLIENT_ID},SENDER_EMAIL=${SENDER_EMAIL},RECIPIENT_EMAIL=${RECIPIENT_EMAIL}"
+  # Use @ as delimiter so comma-separated emails and semicolon-separated domains pass safely
+  ENV_VARS="^@^MAIL_DRIVER=graph@CLINIC_NAME=${CLINIC_NAME}@CLIENT_DOMAIN=${CLIENT_DOMAIN}@TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}@MS_TENANT_ID=${MS_TENANT_ID}@MS_CLIENT_ID=${MS_CLIENT_ID}@SENDER_EMAIL=${SENDER_EMAIL}@RECIPIENT_EMAIL=${RECIPIENT_EMAIL}"
   if [ -n "$BCC_EMAIL" ]; then
-    ENV_VARS="${ENV_VARS},BCC_EMAIL=${BCC_EMAIL}"
+    ENV_VARS="${ENV_VARS}@BCC_EMAIL=${BCC_EMAIL}"
+  fi
+  if [ "$SEO_ATTRIBUTION_EMAIL" != "none" ] && [ -n "$SEO_ATTRIBUTION_EMAIL" ]; then
+    ENV_VARS="${ENV_VARS}@SEO_ATTRIBUTION_EMAIL=${SEO_ATTRIBUTION_EMAIL}"
   fi
   SECRETS="MS_CLIENT_SECRET=${MAIL_SECRET_NAME}:latest,TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_NAME}:latest,DISCORD_WEBHOOK_URL=argon-discord-webhook:latest"
 
@@ -104,14 +110,19 @@ else
   SENDER_EMAIL="${SENDER_EMAIL:-$SMTP_USER}"
   read -rp "Recipient Address(es) (comma-separated): " RECIPIENT_EMAIL
   read -rp "BCC Address(es) (optional, press Enter to skip): " BCC_EMAIL
+  read -rp "Non-PHI SEO Attribution Email [art@logicalthings.com] (enter 'none' to skip): " SEO_ATTRIBUTION_EMAIL
+  SEO_ATTRIBUTION_EMAIL="${SEO_ATTRIBUTION_EMAIL:-art@logicalthings.com}"
 
   MAIL_SECRET_NAME="${SERVICE_NAME}-smtp-pass"
   echo "Saving SMTP password in Secret Manager..."
   upsert_secret "$MAIL_SECRET_NAME" "$SMTP_PASS"
 
-  ENV_VARS="MAIL_DRIVER=smtp,CLINIC_NAME=${CLINIC_NAME},CLIENT_DOMAIN=${CLIENT_DOMAIN},TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY},SMTP_HOST=${SMTP_HOST},SMTP_PORT=${SMTP_PORT},SMTP_USER=${SMTP_USER},SENDER_EMAIL=${SENDER_EMAIL},RECIPIENT_EMAIL=${RECIPIENT_EMAIL}"
+  ENV_VARS="^@^MAIL_DRIVER=smtp@CLINIC_NAME=${CLINIC_NAME}@CLIENT_DOMAIN=${CLIENT_DOMAIN}@TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}@SMTP_HOST=${SMTP_HOST}@SMTP_PORT=${SMTP_PORT}@SMTP_USER=${SMTP_USER}@SENDER_EMAIL=${SENDER_EMAIL}@RECIPIENT_EMAIL=${RECIPIENT_EMAIL}"
   if [ -n "$BCC_EMAIL" ]; then
-    ENV_VARS="${ENV_VARS},BCC_EMAIL=${BCC_EMAIL}"
+    ENV_VARS="${ENV_VARS}@BCC_EMAIL=${BCC_EMAIL}"
+  fi
+  if [ "$SEO_ATTRIBUTION_EMAIL" != "none" ] && [ -n "$SEO_ATTRIBUTION_EMAIL" ]; then
+    ENV_VARS="${ENV_VARS}@SEO_ATTRIBUTION_EMAIL=${SEO_ATTRIBUTION_EMAIL}"
   fi
   SECRETS="SMTP_PASS=${MAIL_SECRET_NAME}:latest,TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_NAME}:latest,DISCORD_WEBHOOK_URL=argon-discord-webhook:latest"
 fi
@@ -140,6 +151,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --platform managed \
   --allow-unauthenticated \
   --clear-base-image \
+  --max-instances=3 \
   --set-env-vars="$ENV_VARS" \
   --set-secrets="$SECRETS"
 

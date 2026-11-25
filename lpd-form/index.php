@@ -1,3 +1,12 @@
+<?php
+$allowed_env = getenv('CLIENT_DOMAIN') ?: 'https://www.leanderpediatricdentistry.com;https://leanderpediatricdentistry.com';
+$allowed_origins = array_filter(array_unique(preg_split('/[;,]\s*/', trim($allowed_env))));
+$cspOrigins = implode(' ', $allowed_origins);
+
+header("Content-Security-Policy: frame-ancestors 'self'" . ($cspOrigins !== '' ? " {$cspOrigins}" : '') . ";");
+header("X-Content-Type-Options: nosniff");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -279,7 +288,7 @@
       </label>
     </div>
 
-    <div class="form-full">
+    <div class="form-full" id="turnstile-container" tabindex="-1">
       <div class="cf-turnstile" data-theme="light" data-sitekey="<?= htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '', ENT_QUOTES, 'UTF-8') ?>"></div>
     </div>
 

@@ -10,6 +10,8 @@ $cspOrigins = implode(' ', array_filter(array_unique($allowed_origins)));
 
 // 4. Send the perfect, browser-approved header
 header("Content-Security-Policy: frame-ancestors 'self' " . $cspOrigins . ";");
+header("X-Content-Type-Options: nosniff");
+header("Referrer-Policy: strict-origin-when-cross-origin");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -52,6 +54,9 @@ header("Content-Security-Policy: frame-ancestors 'self' " . $cspOrigins . ";");
       .form-row {
         flex-direction: column;
         gap: 15px;
+      }
+      input[type="text"], input[type="email"], input[type="tel"], input[type="url"], select, textarea {
+        font-size: 16px;
       }
     }
 

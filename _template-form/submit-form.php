@@ -1,7 +1,52 @@
 <?php
 declare(strict_types=1);
 
+// =========================================================================
+// 1. STRICT DOMAIN VALIDATION
+// =========================================================================
+$allowed_env = getenv('CLIENT_DOMAIN') ?: '';
+$allowed_origins = preg_split('/[;,]\s*/', trim($allowed_env));
+
+if (isset($_SERVER['HTTP_HOST'])) {
+    $allowed_origins[] = 'https://' . $_SERVER['HTTP_HOST'];
+}
+$allowed_origins = array_values(array_unique(array_filter($allowed_origins)));
+
+$current_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+if (!empty($allowed_origins)) {
+    if (empty($current_origin) || !in_array($current_origin, $allowed_origins, true)) {
+        if (empty($current_origin) && isset($_SERVER['HTTP_HOST'])) {
+            $current_origin = 'https://' . $_SERVER['HTTP_HOST'];
+        } else {
+            file_put_contents('php://stderr', json_encode([
+                'severity' => 'ERROR',
+                'message'  => 'SECURITY BLOCK: Invalid Origin attempted - ' . ($current_origin ?: 'No Origin')
+            ]) . "\n");
+
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(403);
+            echo json_encode([
+                'status'  => 'error',
+                'code'    => 'UNAUTHORIZED_ORIGIN',
+                'message' => 'Security verification failed. Invalid Origin.'
+            ]);
+            exit;
+        }
+    }
+}
+
+if ($current_origin !== '') {
+    header('Access-Control-Allow-Origin: ' . $current_origin);
+}
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Accept');
+header('X-Content-Type-Options: nosniff');
 header('Content-Type: application/json; charset=utf-8');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -9,18 +54,52 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// -----------------------------------------------------------------------------
-// 1. Honeypot Check (Bot trap)
-// -----------------------------------------------------------------------------
+// =========================================================================
+// 2. HONEYPOT CHECK (BOT TRAP)
+// =========================================================================
 if (!empty($_POST['fax_number'])) {
-    // Return fake success to bots without dispatching
     echo json_encode(['status' => 'success', 'message' => 'Your message has been sent successfully.']);
     exit;
 }
 
-// -----------------------------------------------------------------------------
-// 2. Cloudflare Turnstile Verification
-// -----------------------------------------------------------------------------
+// =========================================================================
+// 2.5 APPLICATION-LEVEL RATE LIMITING (MAX 5 SUBMISSIONS / 60s PER IP)
+// =========================================================================
+$forwardedFor = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+$rawClientIp  = $forwardedFor !== ''
+    ? trim(explode(',', $forwardedFor)[0])
+    : ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+
+$ipHash       = hash('sha256', $rawClientIp . (getenv('CLINIC_NAME') ?: 'argon'));
+$rateFile     = sys_get_temp_dir() . '/ap_rl_' . $ipHash . '.json';
+$now          = time();
+$windowSec    = 60;
+$maxRequests  = 5;
+
+$timestamps = [];
+if (file_exists($rateFile)) {
+    $decoded = json_decode((string)@file_get_contents($rateFile), true);
+    if (is_array($decoded)) {
+        $timestamps = array_values(array_filter($decoded, static fn($ts) => is_int($ts) && ($now - $ts) < $windowSec));
+    }
+}
+
+if (count($timestamps) >= $maxRequests) {
+    http_response_code(429);
+    header('Retry-After: ' . $windowSec);
+    echo json_encode([
+        'status'  => 'error',
+        'message' => 'Too many submissions received. Please wait a minute and try again.'
+    ]);
+    exit;
+}
+
+$timestamps[] = $now;
+@file_put_contents($rateFile, json_encode($timestamps), LOCK_EX);
+
+// =========================================================================
+// 3. CLOUDFLARE TURNSTILE VERIFICATION
+// =========================================================================
 $turnstileSecret = getenv('TURNSTILE_SECRET_KEY') ?: '';
 $turnstileToken  = $_POST['cf-turnstile-response'] ?? '';
 
@@ -47,7 +126,7 @@ if (!empty($turnstileSecret)) {
     curl_close($ch);
 
     if ($curlError) {
-        error_log("Turnstile cURL error: " . $curlError);
+        file_put_contents('php://stderr', json_encode(['severity' => 'ERROR', 'message' => 'Turnstile cURL error: ' . $curlError]) . "\n");
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => 'Unable to verify security challenge. Please try again.']);
         exit;
@@ -61,9 +140,9 @@ if (!empty($turnstileSecret)) {
     }
 }
 
-// -----------------------------------------------------------------------------
-// 3. Required Fields & PHI Consent Validation (WCAG 2.1 AA Field-Level Errors)
-// -----------------------------------------------------------------------------
+// =========================================================================
+// 4. REQUIRED FIELDS & PHI CONSENT VALIDATION (WCAG 2.1 AA FIELD-LEVEL ERRORS)
+// =========================================================================
 $firstName   = trim((string)($_POST['first_name'] ?? ''));
 $lastName    = trim((string)($_POST['last_name'] ?? ''));
 $emailRaw    = trim((string)($_POST['email'] ?? ''));
@@ -96,20 +175,22 @@ if (!empty($fieldErrors)) {
     exit;
 }
 
-// -----------------------------------------------------------------------------
-// 4. Dynamic Field Extraction & Email Formatting
-// -----------------------------------------------------------------------------
-$clinicName        = getenv('CLINIC_NAME') ?: 'Argon Pipeline';
-$senderDisplayName = getenv('SENDER_NAME') ?: $clinicName;
-$formType          = trim((string)($_POST['form_type'] ?? 'Website Inquiry'));
-$fullName          = trim((string)($_POST['name'] ?? ''));
-$senderName        = trim("$firstName $lastName") ?: ($fullName ?: 'Website Visitor');
-$senderEmail       = (string)$email;
-$senderPhone       = $phone;
+// =========================================================================
+// 5. DYNAMIC FIELD EXTRACTION & EMAIL FORMATTING (HEADER-INJECTION SAFE)
+// =========================================================================
+function sanitizeHeaderStr(string $val): string {
+    return trim((string)preg_replace('/[\r\n\0]+/', ' ', $val));
+}
 
-$subject = "New website message from {$senderName}";
+$clinicName        = sanitizeHeaderStr(getenv('CLINIC_NAME') ?: 'Argon Pipeline');
+$senderDisplayName = sanitizeHeaderStr(getenv('SENDER_NAME') ?: $clinicName);
+$formType          = sanitizeHeaderStr((string)($_POST['form_type'] ?? 'Website Inquiry'));
+$fullName          = sanitizeHeaderStr((string)($_POST['name'] ?? ''));
+$senderName        = sanitizeHeaderStr(trim("$firstName $lastName") ?: ($fullName ?: 'Website Visitor'));
+$senderEmail       = sanitizeHeaderStr((string)$email);
 
-// Readable label mapping for standard fields
+$subject = sanitizeHeaderStr("New website message from {$senderName}");
+
 $labelMap = [
     'first_name'    => 'First Name',
     'last_name'     => 'Last Name',
@@ -121,7 +202,6 @@ $labelMap = [
     'message'       => 'Message',
 ];
 
-// Build dynamic field rows (ignoring system/internal keys)
 $systemKeys = ['cf-turnstile-response', 'fax_number', 'consent', 'form_type'];
 $tableRows   = '';
 $textSummary = "NEW WEBSITE MESSAGE: {$clinicName}\n" . str_repeat('=', 40) . "\n\n";
@@ -131,11 +211,9 @@ foreach ($_POST as $key => $val) {
         continue;
     }
 
-    if (is_array($val)) {
-        $cleanVal = implode(', ', array_map('trim', $val));
-    } else {
-        $cleanVal = trim((string)$val);
-    }
+    $cleanVal = is_array($val)
+        ? implode(', ', array_map('trim', $val))
+        : trim((string)$val);
 
     if ($cleanVal === '') {
         continue;
@@ -166,7 +244,7 @@ foreach ($_POST as $key => $val) {
 }
 
 $replyButtonHtml = '';
-if (!empty($senderEmail) && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
+if ($senderEmail !== '' && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
     $safeReplyEmail = htmlspecialchars($senderEmail, ENT_QUOTES, 'UTF-8');
     $safeReplyName  = htmlspecialchars($senderName, ENT_QUOTES, 'UTF-8');
     $replySubj      = rawurlencode("Re: Website Message - {$clinicName}");
@@ -232,25 +310,61 @@ HTML;
 
 $textSummary .= "\n" . str_repeat('=', 40) . "\nConsent Accepted: Yes\nSubmitted: {$submissionTime}\nIP Address: {$clientIp}\n";
 
-// -----------------------------------------------------------------------------
-// 5. Mail Transport Selection & Dispatch
-// -----------------------------------------------------------------------------
+// =========================================================================
+// 6. MAIL TRANSPORT SELECTION & DISPATCH
+// =========================================================================
 $mailDriver = strtolower(getenv('MAIL_DRIVER') ?: '');
-
-// Auto-detect driver if not explicitly passed
 if (empty($mailDriver)) {
-    if (getenv('MS_CLIENT_ID') || getenv('MS_TENANT_ID')) {
-        $mailDriver = 'graph';
-    } else {
-        $mailDriver = 'smtp';
-    }
+    $mailDriver = (getenv('MS_CLIENT_ID') || getenv('MS_TENANT_ID')) ? 'graph' : 'smtp';
 }
+
+$recipientList = getenv('RECIPIENT_EMAIL') ?: '';
+$bccList       = getenv('BCC_EMAIL') ?: '';
 
 try {
     if ($mailDriver === 'graph') {
-        sendViaGraph($subject, $htmlBody, $senderEmail, $senderName, $senderDisplayName);
+        sendViaGraph($subject, $htmlBody, $senderEmail, $senderName, $senderDisplayName, $recipientList, $bccList);
     } else {
-        sendViaSmtp($subject, $htmlBody, $textSummary, $senderEmail, $senderName, $senderDisplayName);
+        sendViaSmtp($subject, $htmlBody, $textSummary, $senderEmail, $senderName, $senderDisplayName, $recipientList, $bccList);
+    }
+
+    // Optional Non-PHI SEO/AEO Attribution Receipt (HIPAA Safe Harbor De-Identified)
+    $seoRecipient = trim(getenv('SEO_ATTRIBUTION_EMAIL') ?: '');
+    if ($seoRecipient !== '') {
+        $safeSource   = htmlspecialchars($howYouFind, ENT_QUOTES, 'UTF-8');
+        $safeReferral = htmlspecialchars($referalName !== '' ? $referalName : 'N/A', ENT_QUOTES, 'UTF-8');
+        $safeFormType = htmlspecialchars($formType, ENT_QUOTES, 'UTF-8');
+        $seoSubject   = sanitizeHeaderStr("[Lead Attribution] {$clinicName} - {$howYouFind}");
+        $seoHtml      = <<<HTML
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333; padding: 20px;">
+  <h3 style="margin-top: 0; color: #554F9B;">De-Identified Lead Attribution: {$clinicName}</h3>
+  <p style="font-size: 13px; color: #555;">HIPAA Safe Harbor Notice: All patient identifiers and clinical message contents have been stripped from this analytics receipt.</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Clinic</td><td style="padding: 8px; border: 1px solid #ddd;">{$clinicName}</td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Form Type</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeFormType}</td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">How Found</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeSource}</td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Referral / Source Detail</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeReferral}</td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Submitted</td><td style="padding: 8px; border: 1px solid #ddd;">{$submissionTime}</td></tr>
+  </table>
+</body>
+</html>
+HTML;
+        $seoText = "De-Identified Lead Attribution: {$clinicName}\nForm Type: {$formType}\nHow Found: {$howYouFind}\nReferral Detail: " . ($referalName !== '' ? $referalName : 'N/A') . "\nSubmitted: {$submissionTime}\n";
+
+        try {
+            if ($mailDriver === 'graph') {
+                sendViaGraph($seoSubject, $seoHtml, '', '', $senderDisplayName, $seoRecipient, '');
+            } else {
+                sendViaSmtp($seoSubject, $seoHtml, $seoText, '', '', $senderDisplayName, $seoRecipient, '');
+            }
+        } catch (Exception $seoEx) {
+            file_put_contents('php://stderr', json_encode([
+                'severity' => 'WARNING',
+                'message'  => 'Non-blocking SEO attribution dispatch failed: ' . $seoEx->getMessage()
+            ]) . "\n");
+        }
     }
 
     echo json_encode([
@@ -276,34 +390,26 @@ try {
     exit;
 }
 
-// -----------------------------------------------------------------------------
-// Dispatch Handler: Microsoft Graph API (OAuth 2.0)
-// -----------------------------------------------------------------------------
-function sendViaGraph(string $subject, string $htmlBody, string $senderEmail, string $senderName, string $senderDisplayName): bool {
+function sendViaGraph(string $subject, string $htmlBody, string $senderEmail, string $senderName, string $senderDisplayName, string $recipient, string $bcc): bool {
     $tenantId     = getenv('MS_TENANT_ID');
     $clientId     = getenv('MS_CLIENT_ID');
     $clientSecret = getenv('MS_CLIENT_SECRET');
     $senderMail   = getenv('SENDER_EMAIL');
-    $recipient    = getenv('RECIPIENT_EMAIL');
-    $bcc          = getenv('BCC_EMAIL') ?: '';
 
     if (!$tenantId || !$clientId || !$clientSecret || !$senderMail || !$recipient) {
-        throw new Exception("Incomplete Microsoft Graph credentials in environment.");
+        throw new Exception('Incomplete Microsoft Graph credentials in environment.');
     }
 
-    // Request OAuth2 Token
     $tokenUrl = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
-    $tokenFields = [
-        'client_id'     => $clientId,
-        'client_secret' => $clientSecret,
-        'scope'         => 'https://graph.microsoft.com/.default',
-        'grant_type'    => 'client_credentials'
-    ];
-
     $ch = curl_init($tokenUrl);
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => http_build_query($tokenFields),
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'client_id'     => $clientId,
+            'client_secret' => $clientSecret,
+            'scope'         => 'https://graph.microsoft.com/.default',
+            'grant_type'    => 'client_credentials'
+        ]),
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15
     ]);
@@ -317,36 +423,25 @@ function sendViaGraph(string $subject, string $htmlBody, string $senderEmail, st
         throw new Exception("Graph token failed ({$tokenHttp}): {$desc}");
     }
 
-    $accessToken = $tokenData['access_token'];
-
-    // Construct Payload
     $toRecipients = [];
     foreach (explode(',', $recipient) as $recip) {
-        $clean = trim($recip);
+        $clean = sanitizeHeaderStr($recip);
         if ($clean !== '') {
             $toRecipients[] = ['emailAddress' => ['address' => $clean]];
         }
     }
 
     $message = [
-        'subject'      => $subject,
-        'from'         => [
-            'emailAddress' => [
-                'address' => $senderMail,
-                'name'    => $senderDisplayName
-            ]
-        ],
-        'body'         => [
-            'contentType' => 'HTML',
-            'content'     => $htmlBody
-        ],
+        'subject'      => sanitizeHeaderStr($subject),
+        'from'         => ['emailAddress' => ['address' => $senderMail, 'name' => sanitizeHeaderStr($senderDisplayName)]],
+        'body'         => ['contentType' => 'HTML', 'content' => $htmlBody],
         'toRecipients' => $toRecipients
     ];
 
-    if (!empty($bcc)) {
+    if ($bcc !== '') {
         $bccRecipients = [];
         foreach (explode(',', $bcc) as $bccItem) {
-            $cleanBcc = trim($bccItem);
+            $cleanBcc = sanitizeHeaderStr($bccItem);
             if ($cleanBcc !== '') {
                 $bccRecipients[] = ['emailAddress' => ['address' => $cleanBcc]];
             }
@@ -356,24 +451,17 @@ function sendViaGraph(string $subject, string $htmlBody, string $senderEmail, st
         }
     }
 
-    if (!empty($senderEmail) && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
-        $message['replyTo'] = [
-            [
-                'emailAddress' => [
-                    'address' => $senderEmail,
-                    'name'    => $senderName
-                ]
-            ]
-        ];
+    if ($senderEmail !== '' && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
+        $message['replyTo'] = [['emailAddress' => ['address' => $senderEmail, 'name' => sanitizeHeaderStr($senderName)]]];
     }
 
-    $sendUrl = "https://graph.microsoft.com/v1.0/users/" . urlencode($senderMail) . "/sendMail";
+    $sendUrl = 'https://graph.microsoft.com/v1.0/users/' . urlencode($senderMail) . '/sendMail';
     $ch = curl_init($sendUrl);
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode(['message' => $message, 'saveToSentItems' => 'false']),
         CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . $accessToken,
+            'Authorization: Bearer ' . $tokenData['access_token'],
             'Content-Type: application/json'
         ],
         CURLOPT_RETURNTRANSFER => true,
@@ -390,10 +478,7 @@ function sendViaGraph(string $subject, string $htmlBody, string $senderEmail, st
     return true;
 }
 
-// -----------------------------------------------------------------------------
-// Dispatch Handler: PHPMailer SMTP (Google Workspace / Standard SMTP)
-// -----------------------------------------------------------------------------
-function sendViaSmtp(string $subject, string $htmlBody, string $textSummary, string $senderEmail, string $senderName, string $clinicName): bool {
+function sendViaSmtp(string $subject, string $htmlBody, string $textSummary, string $senderEmail, string $senderName, string $clinicName, string $recipient, string $bcc): bool {
     $autoloader = __DIR__ . '/vendor/autoload.php';
     if (!file_exists($autoloader)) {
         throw new Exception("PHPMailer autoloader missing at {$autoloader}");
@@ -405,14 +490,13 @@ function sendViaSmtp(string $subject, string $htmlBody, string $textSummary, str
     $smtpUser   = getenv('SMTP_USER') ?: getenv('SENDER_EMAIL');
     $smtpPass   = getenv('SMTP_PASS');
     $senderMail = getenv('SENDER_EMAIL') ?: $smtpUser;
-    $recipient  = getenv('RECIPIENT_EMAIL');
-    $bcc        = getenv('BCC_EMAIL') ?: '';
 
     if (!$smtpPass || !$senderMail || !$recipient) {
-        throw new Exception("Incomplete SMTP parameters in environment.");
+        throw new Exception('Incomplete SMTP parameters in environment.');
     }
 
     $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+    $mail->CharSet    = 'UTF-8';
     $mail->isSMTP();
     $mail->Host       = $smtpHost;
     $mail->SMTPAuth   = true;
@@ -423,30 +507,30 @@ function sendViaSmtp(string $subject, string $htmlBody, string $textSummary, str
         ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS
         : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
 
-    $mail->setFrom($senderMail, $clinicName);
+    $mail->setFrom($senderMail, sanitizeHeaderStr($clinicName));
 
     foreach (explode(',', $recipient) as $recip) {
-        $clean = trim($recip);
+        $clean = sanitizeHeaderStr($recip);
         if ($clean !== '') {
             $mail->addAddress($clean);
         }
     }
 
-    if (!empty($bcc)) {
+    if ($bcc !== '') {
         foreach (explode(',', $bcc) as $bccItem) {
-            $cleanBcc = trim($bccItem);
+            $cleanBcc = sanitizeHeaderStr($bccItem);
             if ($cleanBcc !== '') {
                 $mail->addBCC($cleanBcc);
             }
         }
     }
 
-    if (!empty($senderEmail) && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
-        $mail->addReplyTo($senderEmail, $senderName);
+    if ($senderEmail !== '' && filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
+        $mail->addReplyTo($senderEmail, sanitizeHeaderStr($senderName));
     }
 
     $mail->isHTML(true);
-    $mail->Subject = $subject;
+    $mail->Subject = sanitizeHeaderStr($subject);
     $mail->Body    = $htmlBody;
     $mail->AltBody = $textSummary;
 
@@ -454,20 +538,13 @@ function sendViaSmtp(string $subject, string $htmlBody, string $textSummary, str
     return true;
 }
 
-// -----------------------------------------------------------------------------
-// Optional Discord Operational Webhook
-// -----------------------------------------------------------------------------
 function sendDiscordAlert(string $clinicName, string $mailDriver, string $errorMessage): void {
     $webhook = getenv('DISCORD_WEBHOOK_URL') ?: getenv('ALERT_WEBHOOK_URL');
     if (!$webhook) {
-        file_put_contents('php://stderr', json_encode([
-            'severity' => 'WARNING',
-            'message'  => 'Discord Webhook skipped: DISCORD_WEBHOOK_URL environment variable is empty or not set.'
-        ]) . "\n");
         return;
     }
 
-    $domain = $_SERVER['HTTP_HOST'] ?? 'Unknown Domain';
+    $domain         = $_SERVER['HTTP_HOST'] ?? 'Unknown Domain';
     $truncatedError = mb_substr($errorMessage, 0, 1000);
 
     $payload = [
@@ -493,14 +570,6 @@ function sendDiscordAlert(string $clinicName, string $mailDriver, string $errorM
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 4
     ]);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_exec($ch);
     curl_close($ch);
-
-    if ($httpCode < 200 || $httpCode >= 300) {
-        file_put_contents('php://stderr', json_encode([
-            'severity' => 'WARNING',
-            'message'  => "Discord Webhook Failed. HTTP: {$httpCode} Response: {$response}"
-        ]) . "\n");
-    }
 }

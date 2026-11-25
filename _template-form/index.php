@@ -1,3 +1,12 @@
+<?php
+$allowed_env = getenv('CLIENT_DOMAIN') ?: '';
+$allowed_origins = array_filter(array_unique(preg_split('/[;,]\s*/', trim($allowed_env))));
+$cspOrigins = implode(' ', $allowed_origins);
+
+header("Content-Security-Policy: frame-ancestors 'self'" . ($cspOrigins !== '' ? " {$cspOrigins}" : '') . ";");
+header("X-Content-Type-Options: nosniff");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,6 +45,9 @@
     @media (max-width: 480px) {
       .form-row {
         flex-direction: column;
+      }
+      input[type="text"], input[type="email"], input[type="tel"], input[type="url"], select, textarea {
+        font-size: 16px; /* Prevents iOS Safari auto-zoom viewport overflow */
       }
     }
 
@@ -113,7 +125,8 @@
     }
 
     /* WCAG Focus Indicators */
-    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, .ap-error-summary:focus-visible, .ap-error-summary a:focus-visible {
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible,
+    .ap-error-summary:focus-visible, .ap-error-summary a:focus-visible, #turnstile-container:focus-visible {
       outline: 3px solid #1a568c;
       outline-offset: 2px;
     }
@@ -267,7 +280,7 @@
       </label>
     </div>
 
-    <div class="form-full">
+    <div class="form-full" id="turnstile-container" tabindex="-1">
       <div class="cf-turnstile" data-theme="light" data-sitekey="<?= htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '', ENT_QUOTES, 'UTF-8') ?>"></div>
     </div>
 
@@ -285,7 +298,6 @@
   const btn = document.getElementById('submit-btn');
   const successDiv = document.getElementById('success-message');
 
-  // Automatic iframe height reporting via ResizeObserver
   function sendHeightToParent() {
     if (!window.parent || window.parent === window) return;
     const container = document.querySelector('.form-container') || document.body;
@@ -304,7 +316,6 @@
   }
   window.addEventListener('load', sendHeightToParent);
 
-  // Toggle conditional requirement when "Referral / Other" is selected
   const howSelect = document.getElementById('how_you_find');
   const referalInput = document.getElementById('referal_name');
   const referalLabel = document.getElementById('referal_name_label');
@@ -331,7 +342,6 @@
     });
   }
 
-  // Dynamic, field-agnostic WCAG 2.1 AA validation helpers
   function getFieldLabel(targetForm, input) {
     if (input.type === 'checkbox' && input.id === 'consent') {
       return 'HIPAA & Electronic Communication Consent';
@@ -475,6 +485,8 @@
           extraLinks.push(`<li><a href="#${input.id}">${getFieldLabel(targetForm, input)}:</a> ${msg}</li>`);
         }
       });
+    } else if (/security check|turnstile|bot challenge/i.test(message)) {
+      extraLinks.push('<li><a href="#turnstile-container">Security Verification:</a> Complete the verification widget below.</li>');
     }
 
     summary.innerHTML = `<strong>Unable to send message:</strong> ${message}` +
@@ -484,7 +496,6 @@
     summary.focus();
   }
 
-  // Clear field-level error immediately as the user corrects their input
   ['input', 'change'].forEach(evt => {
     form.addEventListener(evt, function (e) {
       const input = e.target;

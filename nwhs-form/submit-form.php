@@ -65,6 +65,33 @@ if (!empty($honeypot)) {
     exit;
 }
 
+// =========================================================================
+// APPLICATION-LEVEL RATE LIMITING (MAX 5 SUBMISSIONS / 60s PER IP)
+// =========================================================================
+$rlForwarded = $_SERVER["HTTP_X_FORWARDED_FOR"] ?? "";
+$rlRawIp     = $rlForwarded !== "" ? trim(explode(",", $rlForwarded)[0]) : ($_SERVER["REMOTE_ADDR"] ?? "unknown");
+$rlHash      = hash("sha256", $rlRawIp . (getenv("CLINIC_NAME") ?: "argon"));
+$rlFile      = sys_get_temp_dir() . "/ap_rl_" . $rlHash . ".json";
+$rlNow       = time();
+$rlWindow    = 60;
+$rlMax       = 5;
+$rlTimes     = [];
+if (file_exists($rlFile)) {
+    $rlDec = json_decode((string)@file_get_contents($rlFile), true);
+    if (is_array($rlDec)) {
+        $rlTimes = array_values(array_filter($rlDec, static fn($ts) => is_int($ts) && ($rlNow - $ts) < $rlWindow));
+    }
+}
+if (count($rlTimes) >= $rlMax) {
+    http_response_code(429);
+    header("Retry-After: " . $rlWindow);
+    echo json_encode(["status" => "error", "success" => false, "message" => "Too many submissions received. Please wait a minute and try again."]);
+    exit;
+}
+$rlTimes[] = $rlNow;
+@file_put_contents($rlFile, json_encode($rlTimes), LOCK_EX);
+
+
 // --- CLOUDFLARE TURNSTILE VERIFICATION ---
 $turnstileSecret = getenv('TURNSTILE_SECRET_KEY') ?: 'REDACTED_TURNSTILE_SECRET';
 if (!empty($turnstileSecret)) {
