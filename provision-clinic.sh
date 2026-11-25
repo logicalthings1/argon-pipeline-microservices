@@ -17,6 +17,7 @@ fi
 # 1. Clinic Metadata
 read -rp "Clinic Display Name (e.g. Summit Dental): " CLINIC_NAME
 read -rp "Clinic Subdomain Slug (e.g. summit): " CLINIC_SLUG
+read -rp "Client Website Domain(s) for CSP (e.g. https://www.summitdental.com;https://summitdental.com): " CLIENT_DOMAIN
 
 # Sanitize slug
 CLINIC_SLUG=$(echo "$CLINIC_SLUG" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
@@ -82,7 +83,7 @@ if [ "$DRIVER_CHOICE" = "1" ]; then
   echo "Saving Azure Client Secret in Secret Manager..."
   upsert_secret "$MAIL_SECRET_NAME" "$MS_CLIENT_SECRET"
 
-  ENV_VARS="MAIL_DRIVER=graph,CLINIC_NAME=${CLINIC_NAME},TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY},MS_TENANT_ID=${MS_TENANT_ID},MS_CLIENT_ID=${MS_CLIENT_ID},SENDER_EMAIL=${SENDER_EMAIL},RECIPIENT_EMAIL=${RECIPIENT_EMAIL}"
+  ENV_VARS="MAIL_DRIVER=graph,CLINIC_NAME=${CLINIC_NAME},CLIENT_DOMAIN=${CLIENT_DOMAIN},TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY},MS_TENANT_ID=${MS_TENANT_ID},MS_CLIENT_ID=${MS_CLIENT_ID},SENDER_EMAIL=${SENDER_EMAIL},RECIPIENT_EMAIL=${RECIPIENT_EMAIL}"
   if [ -n "$BCC_EMAIL" ]; then
     ENV_VARS="${ENV_VARS},BCC_EMAIL=${BCC_EMAIL}"
   fi
@@ -108,7 +109,7 @@ else
   echo "Saving SMTP password in Secret Manager..."
   upsert_secret "$MAIL_SECRET_NAME" "$SMTP_PASS"
 
-  ENV_VARS="MAIL_DRIVER=smtp,CLINIC_NAME=${CLINIC_NAME},TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY},SMTP_HOST=${SMTP_HOST},SMTP_PORT=${SMTP_PORT},SMTP_USER=${SMTP_USER},SENDER_EMAIL=${SENDER_EMAIL},RECIPIENT_EMAIL=${RECIPIENT_EMAIL}"
+  ENV_VARS="MAIL_DRIVER=smtp,CLINIC_NAME=${CLINIC_NAME},CLIENT_DOMAIN=${CLIENT_DOMAIN},TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY},SMTP_HOST=${SMTP_HOST},SMTP_PORT=${SMTP_PORT},SMTP_USER=${SMTP_USER},SENDER_EMAIL=${SENDER_EMAIL},RECIPIENT_EMAIL=${RECIPIENT_EMAIL}"
   if [ -n "$BCC_EMAIL" ]; then
     ENV_VARS="${ENV_VARS},BCC_EMAIL=${BCC_EMAIL}"
   fi
@@ -124,6 +125,11 @@ cp -r "$TEMPLATE_DIR" "$TARGET_DIR"
 sed -i "s|{{CLINIC_NAME}}|${CLINIC_NAME}|g" "$TARGET_DIR/index.php"
 sed -i "s|{{CLINIC_SLUG}}|${CLINIC_SLUG}|g" "$TARGET_DIR/index.php"
 
+# Validate PHP syntax before deploying
+while IFS= read -r -d '' php_file; do
+  php -l "$php_file" > /dev/null
+done < <(find "$TARGET_DIR" -maxdepth 2 -type f -name "*.php" -print0)
+
 # 5. Build and Deploy Cloud Run Service
 echo ""
 echo "Deploying Cloud Run service: $SERVICE_NAME..."
@@ -133,6 +139,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --region "$REGION" \
   --platform managed \
   --allow-unauthenticated \
+  --clear-base-image \
   --set-env-vars="$ENV_VARS" \
   --set-secrets="$SECRETS"
 
@@ -159,16 +166,32 @@ echo "   Name : $CLINIC_SLUG"
 echo "   Value: ghs.googlehosted.com."
 echo "   Proxy: DNS Only (Gray Cloud)"
 echo ""
-echo "2. Iframe Embed Code for Client Website:"
+echo "2. Dynamic WCAG 2.1 AA Iframe Embed Code for Client Website:"
 cat << HTML
-<iframe 
-  src="https://${CUSTOM_DOMAIN}/" 
-  width="100%" 
-  height="700" 
-  frameborder="0" 
-  style="border:none; max-width:600px; width:100%; display:block;"
-  title="Contact Us - ${CLINIC_NAME}">
+<iframe
+  id="${CLINIC_SLUG}-form-iframe"
+  src="https://${CUSTOM_DOMAIN}/"
+  title="Contact Us - ${CLINIC_NAME}"
+  style="width: 100%; max-width: 650px; height: 640px; border: 0; overflow: hidden; display: block; transition: height 0.15s ease;"
+  scrolling="no"
+  loading="lazy">
 </iframe>
+
+<script>
+(function () {
+  const iframe = document.getElementById('${CLINIC_SLUG}-form-iframe');
+  if (!iframe) return;
+
+  window.addEventListener('message', function (event) {
+    if (event.origin !== 'https://${CUSTOM_DOMAIN}') return;
+    if (!event.data || typeof event.data !== 'object') return;
+
+    if (event.data.action === 'argonResize' && typeof event.data.height === 'number') {
+      iframe.style.height = event.data.height + 'px';
+    }
+  });
+})();
+</script>
 HTML
 echo ""
 if grep -q "# REGISTRY_ANCHOR" "$HOME/deploy-all.sh" 2>/dev/null; then
