@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // CRITICAL: Load Composer's autoloader so PHP can find PHPMailer
 if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     require __DIR__ . '/vendor/autoload.php';
@@ -17,8 +19,7 @@ $allowed_origins = array_values(array_unique(array_filter($allowed_origins)));
 
 $current_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-// If the request comes from an unknown domain, kill it immediately.
-if (empty($current_origin) || !in_array($current_origin, $allowed_origins)) {
+if (empty($current_origin) || !in_array($current_origin, $allowed_origins, true)) {
     if (empty($current_origin) && isset($_SERVER['HTTP_HOST'])) {
         $current_origin = 'https://' . $_SERVER['HTTP_HOST'];
     } else {
@@ -26,7 +27,8 @@ if (empty($current_origin) || !in_array($current_origin, $allowed_origins)) {
         file_put_contents('php://stderr', $logData . "\n");
         
         http_response_code(403);
-        header('Content-Type: application/json');
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             "status"  => "error", 
             "success" => false,
@@ -43,6 +45,7 @@ if (empty($current_origin) || !in_array($current_origin, $allowed_origins)) {
 header("Access-Control-Allow-Origin: " . $current_origin);
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
+header("X-Content-Type-Options: nosniff");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
@@ -52,24 +55,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // 3. READ & SANITIZE THE SECURE JSON PAYLOAD
 // =========================================================================
 $json_payload = file_get_contents('php://input');
-$data = json_decode($json_payload, true);
-if (!$data && !empty($_POST)) {
+$data = json_decode((string)$json_payload, true);
+if (!is_array($data) && !empty($_POST)) {
     $data = $_POST;
+}
+if (!is_array($data)) {
+    $data = [];
 }
 
 // --- HONEYPOT CHECK ---
-$honeypot = isset($data['fax_number']) ? trim($data['fax_number']) : '';
-if (!empty($honeypot)) {
+$honeypot = isset($data['fax_number']) ? trim((string)$data['fax_number']) : '';
+if ($honeypot !== '') {
     $logData = json_encode(['severity' => 'ERROR', 'message' => 'SECURITY BLOCK: Honeypot triggered by bot. (Hidden fax_number field filled)']);
     file_put_contents('php://stderr', $logData . "\n");
     
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(["status" => "success", "success" => true, "message" => "Message sent securely."]);
     exit;
 }
 
 // =========================================================================
-// 3.1 CAPTURE METADATA (IP & USER AGENT)
+// 3.1 APPLICATION-LEVEL RATE LIMITING (MAX 5 SUBMISSIONS / 60s PER IP)
+// =========================================================================
+$rlForwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+$rlRawIp     = $rlForwarded !== '' ? trim(explode(',', $rlForwarded)[0]) : ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+$rlHash      = hash('sha256', $rlRawIp . (getenv('CLINIC_NAME') ?: 'argon'));
+$rlFile      = sys_get_temp_dir() . '/ap_rl_' . $rlHash . '.json';
+$rlNow       = time();
+$rlWindow    = 60;
+$rlMax       = 5;
+$rlTimes     = [];
+
+if (file_exists($rlFile)) {
+    $rlDec = json_decode((string)@file_get_contents($rlFile), true);
+    if (is_array($rlDec)) {
+        $rlTimes = array_values(array_filter($rlDec, static fn($ts) => is_int($ts) && ($rlNow - $ts) < $rlWindow));
+    }
+}
+
+if (count($rlTimes) >= $rlMax) {
+    http_response_code(429);
+    header('Retry-After: ' . $rlWindow);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        "status"  => "error",
+        "success" => false,
+        "message" => "Too many submissions received. Please wait a minute and try again."
+    ]);
+    exit;
+}
+
+$rlTimes[] = $rlNow;
+@file_put_contents($rlFile, json_encode($rlTimes), LOCK_EX);
+
+// =========================================================================
+// 3.2 CAPTURE METADATA (IP & USER AGENT)
 // =========================================================================
 if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
     $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
@@ -86,16 +126,15 @@ $userAgent = strip_tags($userAgent);
 // 4. TURNSTILE VERIFICATION
 // =========================================================================
 $turnstileResponse = $data['cf-turnstile-response'] ?? '';
-$turnstileSecret   = getenv('TURNSTILE_SECRET');
+$turnstileSecret   = getenv('TURNSTILE_SECRET') ?: getenv('TURNSTILE_SECRET_KEY') ?: '';
 
 if (empty($turnstileResponse)) {
     http_response_code(400);
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(["status" => "error", "success" => false, "message" => "Please complete the security check."]);
     exit;
 }
 
-// Verify the token with Cloudflare
 $verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 $verifyData = [
     'secret'   => $turnstileSecret,
@@ -112,14 +151,14 @@ $options = [
 ];
 $context      = stream_context_create($options);
 $verifyResult = file_get_contents($verifyUrl, false, $context);
-$cfData       = json_decode($verifyResult, true);
+$cfData       = json_decode((string)$verifyResult, true);
 
 if (empty($cfData['success'])) {
     $logData = json_encode(['severity' => 'ERROR', 'message' => 'SECURITY BLOCK: Turnstile validation failed.']);
     file_put_contents('php://stderr', $logData . "\n");
 
     http_response_code(400);
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(["status" => "error", "success" => false, "message" => "Security verification failed. Please try again."]);
     exit;
 }
@@ -127,13 +166,13 @@ if (empty($cfData['success'])) {
 // =========================================================================
 // 5. DATA SANITIZATION & VALIDATION (WCAG 2.1 AA FIELD-LEVEL ERRORS)
 // =========================================================================
-$firstName    = isset($data['first_name']) ? trim($data['first_name']) : '';
-$lastName     = isset($data['last_name']) ? trim($data['last_name']) : '';
-$email        = isset($data['email']) ? filter_var(trim($data['email']), FILTER_VALIDATE_EMAIL) : false;
-$url          = isset($data['url']) ? trim($data['url']) : '';
-$service      = isset($data['service']) ? trim($data['service']) : '';
-$specifyOther = isset($data['specify_other']) ? trim($data['specify_other']) : '';
-$message      = isset($data['message']) ? trim($data['message']) : '';
+$firstName    = isset($data['first_name']) ? trim((string)$data['first_name']) : '';
+$lastName     = isset($data['last_name']) ? trim((string)$data['last_name']) : '';
+$email        = isset($data['email']) ? filter_var(trim((string)$data['email']), FILTER_VALIDATE_EMAIL) : false;
+$url          = isset($data['url']) ? trim((string)$data['url']) : '';
+$service      = isset($data['service']) ? trim((string)$data['service']) : '';
+$specifyOther = isset($data['specify_other']) ? trim((string)$data['specify_other']) : '';
+$message      = isset($data['message']) ? trim((string)$data['message']) : '';
 
 $fieldErrors = [];
 if ($firstName === '') $fieldErrors['first_name'] = 'First Name is required.';
@@ -148,7 +187,7 @@ if ($message === '')   $fieldErrors['message']    = 'Question or Comment is requ
 
 if (!empty($fieldErrors)) {
     http_response_code(422);
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         "status"       => "error",
         "success"      => false,
@@ -166,17 +205,22 @@ $specifyOther = strip_tags($specifyOther);
 $message      = strip_tags($message);
 
 // =========================================================================
-// 6. HTML EMAIL FORMATTING & GOOGLE WORKSPACE / PHPMAILER PROCESSING
+// 6. HTML EMAIL FORMATTING & PHPMAILER PROCESSING (HEADER-INJECTION SAFE)
 // =========================================================================
-$clinicName        = getenv('CLINIC_NAME') ?: 'Argon Pipeline';
-$senderDisplayName = getenv('SENDER_NAME') ?: 'Argon Pipeline System';
-$senderName        = trim("$firstName $lastName");
-$subject           = "New website message from {$senderName}";
+function sanitizeHeaderStr(string $val): string {
+    return trim((string)preg_replace('/[\r\n\0]+/', ' ', $val));
+}
+
+$clinicName        = sanitizeHeaderStr(getenv('CLINIC_NAME') ?: 'Argon Pipeline');
+$senderDisplayName = sanitizeHeaderStr(getenv('SENDER_NAME') ?: 'Argon Pipeline System');
+$senderName        = sanitizeHeaderStr(trim("$firstName $lastName"));
+$cleanReplyEmail   = sanitizeHeaderStr((string)$email);
+$subject           = sanitizeHeaderStr("New website message from {$senderName}");
 
 $fields = [
     'First Name'            => $firstName,
     'Last Name'             => $lastName,
-    'Email'                 => (string)$email,
+    'Email'                 => $cleanReplyEmail,
     'Website URL'           => $url,
     'Office Suite'          => ucfirst($service),
     'Specified Other Suite' => $specifyOther,
@@ -215,7 +259,7 @@ foreach ($fields as $label => $cleanVal) {
     $textSummary .= "{$label}: {$cleanVal}\n";
 }
 
-$safeReplyEmail  = htmlspecialchars((string)$email, ENT_QUOTES, 'UTF-8');
+$safeReplyEmail  = htmlspecialchars($cleanReplyEmail, ENT_QUOTES, 'UTF-8');
 $safeReplyName   = htmlspecialchars($senderName, ENT_QUOTES, 'UTF-8');
 $replySubj       = rawurlencode("Re: Website Message - {$clinicName}");
 $replyButtonHtml = "
@@ -223,13 +267,7 @@ $replyButtonHtml = "
           <a href=\"mailto:{$safeReplyEmail}?subject={$replySubj}\" style=\"display: inline-block; background: #554F9B; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 4px; font-size: 14px; font-weight: 600;\">Reply to {$safeReplyName}</a>
         </div>";
 
-if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-    $ipParts  = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
-    $clientIp = $ipParts[0] ?: ($userIp ?? $_SERVER['REMOTE_ADDR'] ?? 'Unknown');
-} else {
-    $clientIp = $userIp ?? $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
-}
-$safeClientIp = htmlspecialchars(strip_tags($clientIp), ENT_QUOTES, 'UTF-8');
+$safeClientIp = htmlspecialchars(strip_tags($userIp), ENT_QUOTES, 'UTF-8');
 
 $tzName = getenv('TIMEZONE') ?: 'America/Chicago';
 try {
@@ -275,7 +313,7 @@ $htmlBody = <<<HTML
 </html>
 HTML;
 
-$textSummary .= "\n" . str_repeat('=', 40) . "\nSubmitted: {$submissionTime}\nIP Address: {$clientIp}\n";
+$textSummary .= "\n" . str_repeat('=', 40) . "\nSubmitted: {$submissionTime}\nIP Address: {$userIp}\n";
 
 $smtpHost = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
 $smtpUser = getenv('SMTP_USER') ?: 'art@logicalthings.com';
@@ -298,7 +336,7 @@ try {
 
     $mail->setFrom($smtpUser, $senderDisplayName);
     $mail->addAddress('art@logicalthings.com');
-    $mail->addReplyTo((string)$email, $senderName);
+    $mail->addReplyTo($cleanReplyEmail, $senderName);
 
     $mail->isHTML(true);
     $mail->Subject = $subject;
@@ -310,7 +348,7 @@ try {
 // =========================================================================
 // 7. SUCCESS RESPONSE
 // =========================================================================
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(["status" => "success", "success" => true, "message" => "Message sent securely."]);
     exit;
 
@@ -349,7 +387,7 @@ try {
     }
 
     http_response_code(500);
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(["status" => "error", "success" => false, "message" => "An internal system error prevented this message from sending. Our team has been immediately notified."]);
     exit;
 }
