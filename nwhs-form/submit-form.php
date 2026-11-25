@@ -22,6 +22,7 @@ if (empty($current_origin) || !in_array($current_origin, $allowed_origins)) {
         $logData = json_encode(['severity' => 'ERROR', 'message' => 'SECURITY BLOCK: Invalid Origin - ' . ($current_origin ?: 'No Origin')]);
         file_put_contents('php://stderr', $logData . "\n");
         
+        http_response_code(403);
         header('Content-Type: application/json');
         echo json_encode([
             "status"  => "error", 
@@ -69,8 +70,9 @@ $turnstileSecret = getenv('TURNSTILE_SECRET_KEY') ?: 'REDACTED_TURNSTILE_SECRET'
 if (!empty($turnstileSecret)) {
     $token = $data['cf-turnstile-response'] ?? '';
     if (empty($token)) {
+        http_response_code(400);
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'error', 'success' => false, 'message' => 'Spam verification token missing.']);
+        echo json_encode(['status' => 'error', 'success' => false, 'message' => 'Please complete the security check.']);
         exit;
     }
 
@@ -90,13 +92,14 @@ if (!empty($turnstileSecret)) {
         $logData = json_encode(['severity' => 'WARNING', 'message' => 'SECURITY BLOCK: Turnstile verification failed.']);
         file_put_contents('php://stderr', $logData . "\n");
         
+        http_response_code(400);
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'error', 'success' => false, 'message' => 'Bot challenge verification failed.']);
+        echo json_encode(['status' => 'error', 'success' => false, 'message' => 'Security verification failed. Please try again.']);
         exit;
     }
 }
 
-// --- DATA SANITIZATION & VALIDATION ---
+// --- DATA SANITIZATION & VALIDATION (WCAG 2.1 AA FIELD-LEVEL ERRORS) ---
 $firstName   = isset($data['first_name'])   ? trim($data['first_name'])   : '';
 $lastName    = isset($data['last_name'])    ? trim($data['last_name'])    : '';
 $email       = isset($data['email'])        ? filter_var(trim($data['email']), FILTER_VALIDATE_EMAIL) : false;
@@ -117,14 +120,27 @@ $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 $userIp    = strip_tags($userIp);
 $userAgent = strip_tags($userAgent);
 
-// Required fields check
-if (empty($firstName) || empty($lastName) || empty($phone) || empty($howYouFind) || empty($message) || $consent !== 'yes' || !$email) {
+$fieldErrors = [];
+if ($firstName === '')  $fieldErrors['first_name']   = 'First Name is required.';
+if ($lastName === '')   $fieldErrors['last_name']    = 'Last Name is required.';
+if (!$email)            $fieldErrors['email']        = 'Enter a valid email address.';
+if ($phone === '')      $fieldErrors['phone']        = 'Phone number is required.';
+if ($howYouFind === '') $fieldErrors['how_you_find'] = 'Please select how you found us.';
+if ($howYouFind === 'Other' && $referalName === '') {
+    $fieldErrors['referal_name'] = 'Please provide your referral or other details.';
+}
+if ($message === '')    $fieldErrors['message']      = 'Message is required.';
+if ($consent !== 'yes') $fieldErrors['consent']      = 'You must check the consent box to submit your message.';
+
+if (!empty($fieldErrors)) {
+    http_response_code(422);
     header('Content-Type: application/json');
     echo json_encode([
-        "status"  => "error", 
-        "success" => false, 
-        "error"   => "Missing required fields.",
-        "message" => "Please complete all required fields and accept the consent agreement."
+        "status"       => "error", 
+        "success"      => false, 
+        "error"        => "Missing or invalid required fields.",
+        "message"      => "Please correct the highlighted fields and try again.",
+        "field_errors" => $fieldErrors
     ]);
     exit;
 }
@@ -301,7 +317,7 @@ try {
     $sendContext = stream_context_create($sendOptions);
     $sendResponse = file_get_contents($sendUrl, false, $sendContext);
     
-    if (strpos($http_response_header[0], '202') === false) {
+    if (empty($http_response_header[0]) || strpos($http_response_header[0], '202') === false) {
         $errorData = json_decode($sendResponse, true);
         throw new Exception($errorData['error']['message'] ?? 'Microsoft Graph API rejected the message.');
     }
@@ -332,6 +348,7 @@ try {
         curl_close($ch);
     }
 
+    http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode([
         "status"  => "error", 
