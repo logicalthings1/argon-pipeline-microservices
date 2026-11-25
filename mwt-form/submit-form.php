@@ -148,11 +148,27 @@ if (!empty($turnstileSecret)) {
 }
 
 // =========================================================================
-// 3.3 REQUIRED FIELDS CHECK
+// 3.3 REQUIRED FIELDS CHECK (WCAG 2.1 AA FIELD-LEVEL ERRORS)
 // =========================================================================
-if ($firstName === '' || $lastName === '' || $phone === '' || $howYouFind === '' || $message === '' || $consent !== 'yes' || !$email) {
-    http_response_code(400);
-    echo json_encode(["status" => "error", "message" => "Please complete all required fields and accept the consent agreement."]);
+$fieldErrors = [];
+if ($firstName === '')  $fieldErrors['first_name']   = 'First Name is required.';
+if ($lastName === '')   $fieldErrors['last_name']    = 'Last Name is required.';
+if (!$email)            $fieldErrors['email']        = 'Enter a valid email address.';
+if ($phone === '')      $fieldErrors['phone']        = 'Phone Number is required.';
+if ($howYouFind === '') $fieldErrors['how_you_find'] = 'Please select how you found me.';
+if (($howYouFind === 'Referral' || $howYouFind === 'Other') && $referalName === '') {
+    $fieldErrors['referal_name'] = 'Please specify your referral or other details.';
+}
+if ($message === '')    $fieldErrors['message']      = 'Your Message is required.';
+if ($consent !== 'yes') $fieldErrors['consent']      = 'You must accept the communication consent agreement before submitting.';
+
+if (!empty($fieldErrors)) {
+    http_response_code(422);
+    echo json_encode([
+        "status"       => "error",
+        "message"      => "Please correct the highlighted fields and try again.",
+        "field_errors" => $fieldErrors
+    ]);
     exit;
 }
 
