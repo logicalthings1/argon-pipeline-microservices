@@ -8,8 +8,10 @@ $allowed_origins = preg_split('/[;,]\s*/', trim($allowed_env));
 // 3. Clean and join them up with spaces for the CSP string
 $cspOrigins = implode(' ', array_filter(array_unique($allowed_origins)));
 
-// 4. Send the browser-approved header
+// 4. Send browser security headers
 header("Content-Security-Policy: frame-ancestors 'self' " . $cspOrigins . ";");
+header("X-Content-Type-Options: nosniff");
+header("Referrer-Policy: strict-origin-when-cross-origin");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -125,7 +127,8 @@ header("Content-Security-Policy: frame-ancestors 'self' " . $cspOrigins . ";");
     }
 
     /* WCAG Focus Indicators */
-    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, .ap-error-summary:focus-visible, .ap-error-summary a:focus-visible {
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible,
+    .ap-error-summary:focus-visible, .ap-error-summary a:focus-visible, #turnstile-container:focus-visible {
       outline: 3px solid #554F9B;
       outline-offset: 2px;
     }
@@ -233,7 +236,7 @@ header("Content-Security-Policy: frame-ancestors 'self' " . $cspOrigins . ";");
     </div>
     
     <!-- Turnstile (Light Theme) -->
-    <div class="form-full">
+    <div class="form-full" id="turnstile-container" tabindex="-1">
       <div class="cf-turnstile" data-sitekey="0x4AAAAAAETIrCfMZKCInxXw" data-theme="light"></div>
     </div>
 
@@ -423,6 +426,8 @@ header("Content-Security-Policy: frame-ancestors 'self' " . $cspOrigins . ";");
           extraLinks.push(`<li><a href="#${input.id}">${getFieldLabel(targetForm, input)}:</a> ${msg}</li>`);
         }
       });
+    } else if (/security check|turnstile|bot challenge/i.test(message)) {
+      extraLinks.push('<li><a href="#turnstile-container">Security Verification:</a> Complete the verification widget below.</li>');
     }
 
     summary.innerHTML = `<strong>Unable to send message:</strong> ${message}` +
@@ -433,17 +438,19 @@ header("Content-Security-Policy: frame-ancestors 'self' " . $cspOrigins . ";");
   }
 
   // Clear field-level error immediately as the user corrects their input
-  form.addEventListener('input', function (e) {
-    const input = e.target;
-    if (input && input.getAttribute('aria-invalid') === 'true') {
-      const msg = validateSingleField(form, input);
-      if (!msg) {
-        input.removeAttribute('aria-invalid');
-        const errSpan = document.getElementById(`${input.id}-error`);
-        if (errSpan) errSpan.textContent = '';
-        sendHeightToParent();
+  ['input', 'change'].forEach(evt => {
+    form.addEventListener(evt, function (e) {
+      const input = e.target;
+      if (input && input.getAttribute('aria-invalid') === 'true') {
+        const msg = validateSingleField(form, input);
+        if (!msg) {
+          input.removeAttribute('aria-invalid');
+          const errSpan = document.getElementById(`${input.id}-error`);
+          if (errSpan) errSpan.textContent = '';
+          sendHeightToParent();
+        }
       }
-    }
+    });
   });
 
   form.addEventListener('submit', async function (e) {
