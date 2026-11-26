@@ -51,10 +51,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST, OPTIONS');
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(["status" => "error", "success" => false, "message" => "Method Not Allowed."]);
+    exit;
+}
+
+// =========================================================================
+// 2.5 MAX PAYLOAD SIZE GUARD (64 KB CAP AGAINST MEMORY / EMAIL BLOAT)
+// =========================================================================
+$maxPayloadBytes = 65536;
+$contentLength   = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+if ($contentLength > $maxPayloadBytes) {
+    http_response_code(413);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(["status" => "error", "success" => false, "message" => "Submission payload exceeds maximum allowed size."]);
+    exit;
+}
+
 // =========================================================================
 // 3. READ & SANITIZE THE SECURE JSON PAYLOAD
 // =========================================================================
-$json_payload = file_get_contents('php://input');
+$json_payload = file_get_contents('php://input', false, null, 0, $maxPayloadBytes + 1);
+if ($json_payload !== false && strlen($json_payload) > $maxPayloadBytes) {
+    http_response_code(413);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(["status" => "error", "success" => false, "message" => "Submission payload exceeds maximum allowed size."]);
+    exit;
+}
 $data = json_decode((string)$json_payload, true);
 if (!is_array($data) && !empty($_POST)) {
     $data = $_POST;
@@ -128,7 +154,7 @@ $userAgent = strip_tags($userAgent);
 $turnstileResponse = $data['cf-turnstile-response'] ?? '';
 $turnstileSecret   = getenv('TURNSTILE_SECRET') ?: getenv('TURNSTILE_SECRET_KEY') ?: '';
 
-if (empty($turnstileResponse)) {
+if (empty($turnstileResponse) || !is_string($turnstileResponse) || strlen($turnstileResponse) > 2048) {
     http_response_code(400);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(["status" => "error", "success" => false, "message" => "Please complete the security check."]);
@@ -146,7 +172,8 @@ $options = [
     'http' => [
         'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
         'method'  => 'POST',
-        'content' => http_build_query($verifyData)
+        'content' => http_build_query($verifyData),
+        'timeout' => 5
     ]
 ];
 $context      = stream_context_create($options);
@@ -185,6 +212,7 @@ if ($service === 'other' && $specifyOther === '') {
 }
 if ($message === '')   $fieldErrors['message']    = 'Question or Comment is required.';
 
+if (isset($message) && strlen($message) > 5000) { $fieldErrors['message'] = 'Message must be 5,000 characters or fewer.'; }
 if (!empty($fieldErrors)) {
     http_response_code(422);
     header('Content-Type: application/json; charset=utf-8');

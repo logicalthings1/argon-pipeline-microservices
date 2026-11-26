@@ -135,7 +135,7 @@ $turnstileResponse = $data['cf-turnstile-response'] ?? '';
 $turnstileSecret   = getenv('TURNSTILE_SECRET') ?: getenv('TURNSTILE_SECRET_KEY') ?: '';
 
 if (!empty($turnstileSecret)) {
-    if (empty($turnstileResponse)) {
+    if (empty($turnstileResponse) || !is_string($turnstileResponse) || strlen($turnstileResponse) > 2048) {
         http_response_code(400);
         echo json_encode(["status" => "error", "message" => "Please complete the security check."]);
         exit;
@@ -189,6 +189,7 @@ if (($howYouFind === 'Referral' || $howYouFind === 'Other') && $referalName === 
 if ($message === '')    $fieldErrors['message']      = 'Your Message is required.';
 if ($consent !== 'yes') $fieldErrors['consent']      = 'You must accept the communication consent agreement before submitting.';
 
+if (isset($message) && strlen($message) > 5000) { $fieldErrors['message'] = 'Message must be 5,000 characters or fewer.'; }
 if (!empty($fieldErrors)) {
     http_response_code(422);
     echo json_encode([

@@ -198,6 +198,7 @@ if ($consent !== 'yes') {
         : 'You must check the consent box to submit your message.';
 }
 
+if (isset($message) && strlen($message) > 5000) { $fieldErrors['message'] = 'Message must be 5,000 characters or fewer.'; }
 if (!empty($fieldErrors)) {
     http_response_code(422);
     header('Content-Type: application/json');
