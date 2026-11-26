@@ -356,28 +356,73 @@ try {
     // Optional Non-PHI SEO/AEO Attribution Receipt (HIPAA Safe Harbor De-Identified)
     $seoRecipient = trim(getenv('SEO_ATTRIBUTION_EMAIL') ?: '');
     if ($seoRecipient !== '') {
+        $rawSlug = trim(getenv('CLINIC_SLUG') ?: '');
+        if ($rawSlug === '' && !empty($_SERVER['HTTP_HOST'])) {
+            $hostParts = explode('.', strtolower($_SERVER['HTTP_HOST']));
+            $rawSlug = preg_replace('/-form$/', '', $hostParts[0]);
+        }
+        $seoSlug      = strtoupper($rawSlug !== '' ? $rawSlug : 'ARGON');
+        $seoDate      = isset($dt) ? $dt->format('Y-m-d') : date('Y-m-d');
         $seoFormType  = isset($formType) && $formType !== '' ? $formType : 'Website Inquiry';
+        $safeClinic   = htmlspecialchars($clinicName, ENT_QUOTES, 'UTF-8');
         $safeSource   = htmlspecialchars($howYouFind, ENT_QUOTES, 'UTF-8');
         $safeReferral = htmlspecialchars($referalName !== '' ? $referalName : 'N/A', ENT_QUOTES, 'UTF-8');
         $safeFormType = htmlspecialchars($seoFormType, ENT_QUOTES, 'UTF-8');
-        $seoSubject   = preg_replace('/[\r\n\0]+/', ' ', "[Lead Attribution] {$clinicName} - {$howYouFind}");
+        $seoSubject   = preg_replace('/[\r\n\0]+/', ' ', "{$seoSlug} Lead Attribution: {$howYouFind} - {$seoDate}");
         $seoHtml      = <<<HTML
 <!DOCTYPE html>
 <html>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333; padding: 20px;">
-  <h3 style="margin-top: 0; color: #554F9B;">De-Identified Lead Attribution: {$clinicName}</h3>
-  <p style="font-size: 13px; color: #555;">HIPAA Safe Harbor Notice: All patient identifiers and clinical message contents have been stripped from this analytics receipt.</p>
-  <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
-    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Clinic</td><td style="padding: 8px; border: 1px solid #ddd;">{$clinicName}</td></tr>
-    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Form Type</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeFormType}</td></tr>
-    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">How Found</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeSource}</td></tr>
-    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Referral / Source Detail</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeReferral}</td></tr>
-    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Submitted</td><td style="padding: 8px; border: 1px solid #ddd;">{$submissionTime}</td></tr>
+<head>
+  <meta charset="UTF-8">
+  <title>{$seoSubject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #4A5568; background: #f6f6ff; margin: 0; padding: 24px;">
+  <table role="presentation" style="max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; border-collapse: separate; border-spacing: 0; overflow: hidden; width: 100%;">
+    <tr>
+      <td style="background: #554F9B; padding: 18px 24px; color: #ffffff;">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600;">{$safeClinic}</h2>
+        <div style="font-size: 14px; opacity: 0.9; margin-top: 2px;">De-Identified Lead Attribution Receipt</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 20px 24px;">
+        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Client</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeClinic} ({$seoSlug})</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Form Type</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeFormType}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">How Did You Find Us?</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeSource}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Referral / Source Detail</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeReferral}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Submitted</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$submissionTime}</td>
+          </tr>
+        </table>
+        <div style="margin-top: 20px; padding: 14px; background: #f6f6ff; border-radius: 4px; font-size: 12px; color: #4A5568; line-height: 1.4;">
+          <strong>HIPAA Safe Harbor Notice:</strong> All 18 HIPAA patient identifiers, IP addresses, and clinical message contents have been stripped from this lead-source attribution receipt.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 12px 24px; background: #e6e6f9; border-top: 1px solid #e2e8f0; font-size: 11px; color: #4A5568; text-align: center;">
+        Processed securely via <a href="https://argonpipeline.com" style="color: #554F9B; text-decoration: none;">Argon Pipeline</a>
+      </td>
+    </tr>
   </table>
 </body>
 </html>
 HTML;
-        $seoText = "De-Identified Lead Attribution: {$clinicName}\nForm Type: {$seoFormType}\nHow Found: {$howYouFind}\nReferral Detail: " . ($referalName !== '' ? $referalName : 'N/A') . "\nSubmitted: {$submissionTime}\n";
+        $seoText = "De-Identified Lead Attribution: {$clinicName} ({$seoSlug})\nForm Type: {$seoFormType}\nHow Found: {$howYouFind}\nReferral Detail: " . ($referalName !== '' ? $referalName : 'N/A') . "\nSubmitted: {$submissionTime}\n";
 
         try {
             $seoMail = new PHPMailer\PHPMailer\PHPMailer(true);
@@ -389,7 +434,7 @@ HTML;
             $seoMail->Port       = $smtpPort;
             $seoMail->SMTPSecure = ($smtpPort === 465) ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
             $seoMail->CharSet    = 'UTF-8';
-            $seoMail->setFrom($smtpUser, $senderName);
+            $seoMail->setFrom($smtpUser, $seoSlug);
             foreach (explode(',', $seoRecipient) as $addr) {
                 $clean = filter_var(trim($addr), FILTER_VALIDATE_EMAIL);
                 if ($clean) $seoMail->addAddress($clean);
