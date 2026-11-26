@@ -54,8 +54,13 @@ upsert_secret() {
   local secret_value="$2"
 
   if gcloud secrets describe "$secret_name" --project="$PROJECT_ID" >/dev/null 2>&1; then
+    local old_versions
+    old_versions=$(gcloud secrets versions list "$secret_name" --project="$PROJECT_ID" --filter="state=ENABLED" --format="value(name)")
     printf "%s" "$secret_value" | gcloud secrets versions add "$secret_name" --data-file=- --project="$PROJECT_ID" >/dev/null
-    echo "  Updated existing secret: $secret_name"
+    for v in $old_versions; do
+      gcloud secrets versions destroy "$v" --secret="$secret_name" --project="$PROJECT_ID" --quiet >/dev/null 2>&1 || true
+    done
+    echo "  Updated existing secret and destroyed old version(s): $secret_name"
   else
     printf "%s" "$secret_value" | gcloud secrets create "$secret_name" --data-file=- --replication-policy="automatic" --project="$PROJECT_ID" >/dev/null
     echo "  Created new secret: $secret_name"
