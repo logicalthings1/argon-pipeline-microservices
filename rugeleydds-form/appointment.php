@@ -280,7 +280,7 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
     <button type="submit" id="submit-btn" class="btn-submit">Request Appointment</button>
 
     <p class="attribution">
-      <a href="https://argonpipeline.com/?utm_source=website&utm_medium=footer&utm_campaign=rugeleydds" target="_blank" rel="noopener">HIPAA Compliant Contact Form<span class=\"sr-only\"> (opens in a new tab)</span></a>
+      <a href="https://argonpipeline.com/?utm_source=website&utm_medium=footer&utm_campaign=rugeleydds" target="_blank" rel="noopener">HIPAA Compliant Contact Form<span class="sr-only"> (opens in a new tab)</span></a>
     </p>
   </form>
 </main>
