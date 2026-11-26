@@ -14,9 +14,7 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contact Us - Leander Pediatric Dentistry</title>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sen:wght@400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -222,6 +220,17 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
       color: #1a568c;
       text-decoration: underline;
     }
+      .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 </head>
 <body>
@@ -288,14 +297,14 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
       </label>
     </div>
 
-    <div class="form-full" id="turnstile-container" tabindex="-1">
+    <div class="form-full" id="turnstile-container" role="group" aria-label="Spam protection verification" tabindex="-1">
       <div class="cf-turnstile" data-theme="light" data-sitekey="<?= htmlspecialchars(getenv('TURNSTILE_SITE_KEY') ?: '', ENT_QUOTES, 'UTF-8') ?>"></div>
     </div>
 
     <button type="submit" id="submit-btn" class="btn-submit">Send Message</button>
 
     <p class="attribution">
-      <a href="https://argonpipeline.com/?utm_source=website&utm_medium=footer&utm_campaign=lpd" target="_blank" rel="noopener">HIPAA Compliant Contact Form</a>
+      <a href="https://argonpipeline.com/?utm_source=website&utm_medium=footer&utm_campaign=lpd" target="_blank" rel="noopener">HIPAA Compliant Contact Form<span class=\"sr-only\"> (opens in a new tab)</span></a>
     </p>
   </form>
 </main>

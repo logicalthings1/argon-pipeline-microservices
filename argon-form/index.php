@@ -19,9 +19,7 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Argon Pipeline Contact Form</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     * { box-sizing: border-box; }
@@ -172,6 +170,17 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
       max-width: 600px;
       margin: 0;
     }
+      .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 </head>
 <body>
@@ -236,7 +245,7 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
     </div>
     
     <!-- Turnstile (Light Theme) -->
-    <div class="form-full" id="turnstile-container" tabindex="-1">
+    <div class="form-full" id="turnstile-container" role="group" aria-label="Spam protection verification" tabindex="-1">
       <div class="cf-turnstile" data-sitekey="0x4AAAAAAETIrCfMZKCInxXw" data-theme="light"></div>
     </div>
 

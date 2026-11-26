@@ -19,9 +19,7 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Secure Contact Form</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     * { box-sizing: border-box; }
@@ -229,6 +227,17 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
     .attribution a:hover, .attribution a:focus-visible {
       text-decoration: underline;
     }
+      .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 </head>
 
@@ -308,7 +317,7 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
     <button type="submit" id="submit-btn">Send Message</button>
 
     <p class="attribution">
-      <a href="https://argonpipeline.com/?utm_source=website&utm_medium=footer&utm_campaign=mwt" target="_blank" rel="noopener">HIPAA Compliant Contact Form</a>
+      <a href="https://argonpipeline.com/?utm_source=website&utm_medium=footer&utm_campaign=mwt" target="_blank" rel="noopener">HIPAA Compliant Contact Form<span class=\"sr-only\"> (opens in a new tab)</span></a>
     </p>
   </form>
 </main>
