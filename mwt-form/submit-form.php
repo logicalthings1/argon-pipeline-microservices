@@ -310,7 +310,7 @@ $smtpUser  = getenv('SMTP_USER') ?: 'me@marianwthompson.com';
 $smtpPass  = getenv('SMTP_PASS');
 $smtpPort  = (int)(getenv('SMTP_PORT') ?: 465);
 $recipient = getenv('RECIPIENT_EMAIL') ?: 'me@marianwthompson.com';
-$bcc       = getenv('BCC_EMAIL') ?: 'art@logicalthings.com';
+$bcc       = getenv('BCC_EMAIL') ?: '';
 
 try {
     $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
@@ -352,6 +352,61 @@ try {
     $mail->AltBody = $textSummary;
 
     $mail->send();
+
+    // Optional Non-PHI SEO/AEO Attribution Receipt (HIPAA Safe Harbor De-Identified)
+    $seoRecipient = trim(getenv('SEO_ATTRIBUTION_EMAIL') ?: '');
+    if ($seoRecipient !== '') {
+        $seoFormType  = isset($formType) && $formType !== '' ? $formType : 'Website Inquiry';
+        $safeSource   = htmlspecialchars($howYouFind, ENT_QUOTES, 'UTF-8');
+        $safeReferral = htmlspecialchars($referalName !== '' ? $referalName : 'N/A', ENT_QUOTES, 'UTF-8');
+        $safeFormType = htmlspecialchars($seoFormType, ENT_QUOTES, 'UTF-8');
+        $seoSubject   = preg_replace('/[\r\n\0]+/', ' ', "[Lead Attribution] {$clinicName} - {$howYouFind}");
+        $seoHtml      = <<<HTML
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333; padding: 20px;">
+  <h3 style="margin-top: 0; color: #554F9B;">De-Identified Lead Attribution: {$clinicName}</h3>
+  <p style="font-size: 13px; color: #555;">HIPAA Safe Harbor Notice: All patient identifiers and clinical message contents have been stripped from this analytics receipt.</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Clinic</td><td style="padding: 8px; border: 1px solid #ddd;">{$clinicName}</td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Form Type</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeFormType}</td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">How Found</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeSource}</td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Referral / Source Detail</td><td style="padding: 8px; border: 1px solid #ddd;">{$safeReferral}</td></tr>
+    <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: 600;">Submitted</td><td style="padding: 8px; border: 1px solid #ddd;">{$submissionTime}</td></tr>
+  </table>
+</body>
+</html>
+HTML;
+        $seoText = "De-Identified Lead Attribution: {$clinicName}\nForm Type: {$seoFormType}\nHow Found: {$howYouFind}\nReferral Detail: " . ($referalName !== '' ? $referalName : 'N/A') . "\nSubmitted: {$submissionTime}\n";
+
+        try {
+            $seoMail = new PHPMailer\PHPMailer\PHPMailer(true);
+            $seoMail->isSMTP();
+            $seoMail->Host       = $smtpHost;
+            $seoMail->SMTPAuth   = true;
+            $seoMail->Username   = $smtpUser;
+            $seoMail->Password   = $smtpPass;
+            $seoMail->Port       = $smtpPort;
+            $seoMail->SMTPSecure = ($smtpPort === 465) ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $seoMail->CharSet    = 'UTF-8';
+            $seoMail->setFrom($smtpUser, $senderName);
+            foreach (explode(',', $seoRecipient) as $addr) {
+                $clean = filter_var(trim($addr), FILTER_VALIDATE_EMAIL);
+                if ($clean) $seoMail->addAddress($clean);
+            }
+            $seoMail->isHTML(true);
+            $seoMail->Subject = $seoSubject;
+            $seoMail->Body    = $seoHtml;
+            $seoMail->AltBody = $seoText;
+            $seoMail->send();
+        } catch (Throwable $seoEx) {
+            file_put_contents('php://stderr', json_encode([
+                'severity' => 'WARNING',
+                'message'  => 'SEO attribution dispatch failed: ' . $seoEx->getMessage()
+            ]) . "\n");
+        }
+    }
+
 
     echo json_encode(["status" => "success", "message" => "Message sent securely."]);
     exit;
