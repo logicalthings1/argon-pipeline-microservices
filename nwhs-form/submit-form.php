@@ -121,7 +121,7 @@ $rlTimes[] = $rlNow;
 
 
 // --- CLOUDFLARE TURNSTILE VERIFICATION ---
-$turnstileSecret = getenv('TURNSTILE_SECRET_KEY') ?: 'REDACTED_TURNSTILE_SECRET';
+$turnstileSecret = trim(getenv('TURNSTILE_SECRET_KEY') ?: '');
 if (!empty($turnstileSecret)) {
     $token = $data['cf-turnstile-response'] ?? '';
     if (empty($token)) {
