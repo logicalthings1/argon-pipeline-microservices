@@ -12,6 +12,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // -----------------------------------------------------------------------------
 // 1. Honeypot Check (Bot trap)
 // -----------------------------------------------------------------------------
+// =========================================================================
+// 1.5 MAX PAYLOAD SIZE GUARD (64 KB CAP AGAINST MEMORY / EMAIL BLOAT)
+// =========================================================================
+$maxPayloadBytes = 65536;
+$contentLength   = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+if ($contentLength > $maxPayloadBytes) {
+    http_response_code(413);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(["status" => "error", "success" => false, "message" => "Submission payload exceeds maximum allowed size."]);
+    exit;
+}
+
 if (!empty($_POST['fax_number'])) {
     // Return fake success to bots without dispatching
     echo json_encode(['status' => 'success', 'message' => 'Your message has been sent successfully.']);

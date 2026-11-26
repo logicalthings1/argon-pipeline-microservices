@@ -46,9 +46,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // =========================================================================
+// 2.5 STRICT METHOD & MAX PAYLOAD SIZE GUARD (405 / 64 KB 413 CAP)
+// =========================================================================
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(["status" => "error", "success" => false, "message" => "Method Not Allowed"]);
+    exit;
+}
+
+$maxPayloadBytes = 65536;
+$contentLength   = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+if ($contentLength > $maxPayloadBytes) {
+    http_response_code(413);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(["status" => "error", "success" => false, "message" => "Submission payload exceeds maximum allowed size."]);
+    exit;
+}
+
+// =========================================================================
 // 3. READ & SANITIZE PAYLOAD (JSON OR FORM-DATA)
 // =========================================================================
-$json_payload = file_get_contents('php://input');
+$json_payload = file_get_contents('php://input', false, null, 0, $maxPayloadBytes + 1);
+if ($json_payload !== false && strlen($json_payload) > $maxPayloadBytes) {
+    http_response_code(413);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(["status" => "error", "success" => false, "message" => "Submission payload exceeds maximum allowed size."]);
+    exit;
+}
 $data = json_decode($json_payload, true);
 if (!$data && !empty($_POST)) {
     $data = $_POST;
@@ -61,108 +86,7 @@ if (!empty($honeypot)) {
     file_put_contents('php://stderr', $logData . "\n");
     
 
-    // Optional Non-PHI SEO/AEO Attribution Receipt (HIPAA Safe Harbor De-Identified)
-    $seoRecipient = trim(getenv('SEO_ATTRIBUTION_EMAIL') ?: '');
-    if ($seoRecipient !== '') {
-        $rawSlug = trim(getenv('CLINIC_SLUG') ?: '');
-        if ($rawSlug === '' && !empty($_SERVER['HTTP_HOST'])) {
-            $hostParts = explode('.', strtolower($_SERVER['HTTP_HOST']));
-            $rawSlug = preg_replace('/-form$/', '', $hostParts[0]);
-        }
-        $seoSlug      = strtoupper($rawSlug !== '' ? $rawSlug : 'ARGON');
-        $seoDate      = isset($dt) ? $dt->format('Y-m-d') : date('Y-m-d');
-        $seoFormType  = isset($formType) && $formType !== '' ? $formType : 'Website Inquiry';
-        $safeClinic   = htmlspecialchars($clinicName, ENT_QUOTES, 'UTF-8');
-        $safeSource   = htmlspecialchars($howYouFind, ENT_QUOTES, 'UTF-8');
-        $safeReferral = htmlspecialchars($referalName !== '' ? $referalName : 'N/A', ENT_QUOTES, 'UTF-8');
-        $safeFormType = htmlspecialchars($seoFormType, ENT_QUOTES, 'UTF-8');
-        $seoSubject   = preg_replace('/[\r\n\0]+/', ' ', "{$seoSlug} Lead Attribution: {$howYouFind} - {$seoDate}");
-        $seoHtml      = <<<HTML
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>{$seoSubject}</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #4A5568; background: #f6f6ff; margin: 0; padding: 24px;">
-  <table role="presentation" style="max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; border-collapse: separate; border-spacing: 0; overflow: hidden; width: 100%;">
-    <tr>
-      <td style="background: #554F9B; padding: 18px 24px; color: #ffffff;">
-        <h2 style="margin: 0; font-size: 20px; font-weight: 600;">{$safeClinic}</h2>
-        <div style="font-size: 14px; opacity: 0.9; margin-top: 2px;">De-Identified Lead Attribution Receipt</div>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 20px 24px;">
-        <table role="presentation" style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Client</td>
-            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeClinic} ({$seoSlug})</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Form Type</td>
-            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeFormType}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">How Did You Find Us?</td>
-            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeSource}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Referral / Source Detail</td>
-            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeReferral}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Submitted</td>
-            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$submissionTime}</td>
-          </tr>
-        </table>
-        <div style="margin-top: 20px; padding: 14px; background: #f6f6ff; border-radius: 4px; font-size: 12px; color: #4A5568; line-height: 1.4;">
-          <strong>HIPAA Safe Harbor Notice:</strong> All 18 HIPAA patient identifiers, IP addresses, and clinical message contents have been stripped from this lead-source attribution receipt.
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 12px 24px; background: #e6e6f9; border-top: 1px solid #e2e8f0; font-size: 11px; color: #4A5568; text-align: center;">
-        Processed securely via <a href="https://argonpipeline.com" style="color: #554F9B; text-decoration: none;">Argon Pipeline</a>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-HTML;
-        $seoText = "De-Identified Lead Attribution: {$clinicName} ({$seoSlug})\nForm Type: {$seoFormType}\nHow Found: {$howYouFind}\nReferral Detail: " . ($referalName !== '' ? $referalName : 'N/A') . "\nSubmitted: {$submissionTime}\n";
 
-        try {
-            $seoTo = [];
-            foreach (explode(',', $seoRecipient) as $addr) {
-                $clean = filter_var(trim($addr), FILTER_VALIDATE_EMAIL);
-                if ($clean) $seoTo[] = ['emailAddress' => ['address' => $clean]];
-            }
-            if (!empty($seoTo) && !empty($accessToken) && !empty($sendUrl)) {
-                $seoPayload = [
-                    'message' => [
-                        'subject'      => $seoSubject,
-                        'body'         => ['contentType' => 'HTML', 'content' => $seoHtml],
-                        'toRecipients' => $seoTo,
-                    ],
-                    'saveToSentItems' => false
-                ];
-                $seoCtx = stream_context_create(['http' => [
-                    'method'        => 'POST',
-                    'header'        => "Authorization: Bearer {$accessToken}\r\nContent-Type: application/json\r\n",
-                    'content'       => json_encode($seoPayload),
-                    'timeout'       => 5,
-                    'ignore_errors' => true
-                ]]);
-                file_get_contents($sendUrl, false, $seoCtx);
-            }
-        } catch (Throwable $seoEx) {
-            file_put_contents('php://stderr', json_encode([
-                'severity' => 'WARNING',
-                'message'  => 'SEO attribution dispatch failed: ' . $seoEx->getMessage()
-            ]) . "\n");
-        }
-    }
 
     header('Content-Type: application/json');
     echo json_encode(["status" => "success", "success" => true, "message" => "Message sent securely."]);
@@ -512,6 +436,110 @@ try {
     if (empty($http_response_header[0]) || strpos($http_response_header[0], '202') === false) {
         $errorData = json_decode($sendResponse, true);
         throw new Exception($errorData['error']['message'] ?? 'Microsoft Graph API rejected the message.');
+    }
+
+
+    // Optional Non-PHI SEO/AEO Attribution Receipt (HIPAA Safe Harbor De-Identified)
+    $seoRecipient = trim(getenv('SEO_ATTRIBUTION_EMAIL') ?: '');
+    if ($seoRecipient !== '') {
+        $rawSlug = trim(getenv('CLINIC_SLUG') ?: '');
+        if ($rawSlug === '' && !empty($_SERVER['HTTP_HOST'])) {
+            $hostParts = explode('.', strtolower($_SERVER['HTTP_HOST']));
+            $rawSlug = preg_replace('/-form$/', '', $hostParts[0]);
+        }
+        $seoSlug      = strtoupper($rawSlug !== '' ? $rawSlug : 'ARGON');
+        $seoDate      = isset($dt) ? $dt->format('Y-m-d') : date('Y-m-d');
+        $seoFormType  = isset($formType) && $formType !== '' ? $formType : 'Website Inquiry';
+        $safeClinic   = htmlspecialchars($clinicName, ENT_QUOTES, 'UTF-8');
+        $safeSource   = htmlspecialchars($howYouFind, ENT_QUOTES, 'UTF-8');
+        $safeReferral = htmlspecialchars($referalName !== '' ? $referalName : 'N/A', ENT_QUOTES, 'UTF-8');
+        $safeFormType = htmlspecialchars($seoFormType, ENT_QUOTES, 'UTF-8');
+        $seoSubject   = preg_replace('/[\r\n\0]+/', ' ', "{$seoSlug} Lead Attribution: {$howYouFind} - {$seoDate}");
+        $seoHtml      = <<<HTML
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{$seoSubject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #4A5568; background: #f6f6ff; margin: 0; padding: 24px;">
+  <table role="presentation" style="max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; border-collapse: separate; border-spacing: 0; overflow: hidden; width: 100%;">
+    <tr>
+      <td style="background: #554F9B; padding: 18px 24px; color: #ffffff;">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600;">{$safeClinic}</h2>
+        <div style="font-size: 14px; opacity: 0.9; margin-top: 2px;">De-Identified Lead Attribution Receipt</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 20px 24px;">
+        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Client</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeClinic} ({$seoSlug})</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Form Type</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeFormType}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">How Did You Find Us?</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeSource}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Referral / Source Detail</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$safeReferral}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 15px; font-weight: 600; color: #4A5568; background: #fdfdfd; border-bottom: 1px solid #e2e8f0; width: 35%; vertical-align: top;">Submitted</td>
+            <td style="padding: 10px 14px; font-size: 15px; color: #4A5568; border-bottom: 1px solid #e2e8f0; vertical-align: top;">{$submissionTime}</td>
+          </tr>
+        </table>
+        <div style="margin-top: 20px; padding: 14px; background: #f6f6ff; border-radius: 4px; font-size: 12px; color: #4A5568; line-height: 1.4;">
+          <strong>HIPAA Safe Harbor Notice:</strong> All 18 HIPAA patient identifiers, IP addresses, and clinical message contents have been stripped from this lead-source attribution receipt.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 12px 24px; background: #e6e6f9; border-top: 1px solid #e2e8f0; font-size: 11px; color: #4A5568; text-align: center;">
+        Processed securely via <a href="https://argonpipeline.com" style="color: #554F9B; text-decoration: none;">Argon Pipeline</a>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+HTML;
+        $seoText = "De-Identified Lead Attribution: {$clinicName} ({$seoSlug})\nForm Type: {$seoFormType}\nHow Found: {$howYouFind}\nReferral Detail: " . ($referalName !== '' ? $referalName : 'N/A') . "\nSubmitted: {$submissionTime}\n";
+
+        try {
+            $seoTo = [];
+            foreach (explode(',', $seoRecipient) as $addr) {
+                $clean = filter_var(trim($addr), FILTER_VALIDATE_EMAIL);
+                if ($clean) $seoTo[] = ['emailAddress' => ['address' => $clean]];
+            }
+            if (!empty($seoTo) && !empty($accessToken) && !empty($sendUrl)) {
+                $seoPayload = [
+                    'message' => [
+                        'subject'      => $seoSubject,
+                        'body'         => ['contentType' => 'HTML', 'content' => $seoHtml],
+                        'toRecipients' => $seoTo,
+                    ],
+                    'saveToSentItems' => false
+                ];
+                $seoCtx = stream_context_create(['http' => [
+                    'method'        => 'POST',
+                    'header'        => "Authorization: Bearer {$accessToken}\r\nContent-Type: application/json\r\n",
+                    'content'       => json_encode($seoPayload),
+                    'timeout'       => 5,
+                    'ignore_errors' => true
+                ]]);
+                file_get_contents($sendUrl, false, $seoCtx);
+            }
+        } catch (Throwable $seoEx) {
+            file_put_contents('php://stderr', json_encode([
+                'severity' => 'WARNING',
+                'message'  => 'SEO attribution dispatch failed: ' . $seoEx->getMessage()
+            ]) . "\n");
+        }
     }
 
     header('Content-Type: application/json');

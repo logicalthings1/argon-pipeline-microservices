@@ -53,9 +53,27 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // =========================================================================
+// 1.5 MAX PAYLOAD SIZE GUARD (64 KB CAP AGAINST MEMORY / EMAIL BLOAT)
+// =========================================================================
+$maxPayloadBytes = 65536;
+$contentLength   = isset($_SERVER["CONTENT_LENGTH"]) ? (int)$_SERVER["CONTENT_LENGTH"] : 0;
+if ($contentLength > $maxPayloadBytes) {
+    http_response_code(413);
+    header("Content-Type: application/json; charset=utf-8");
+    echo json_encode(["status" => "error", "success" => false, "message" => "Submission payload exceeds maximum allowed size."]);
+    exit;
+}
+
+// =========================================================================
 // 3. READ & SANITIZE THE SECURE PAYLOAD (JSON OR FORM-ENCODED)
 // =========================================================================
-$rawInput = file_get_contents('php://input');
+$rawInput = file_get_contents("php://input", false, null, 0, $maxPayloadBytes + 1);
+if ($rawInput !== false && strlen($rawInput) > $maxPayloadBytes) {
+    http_response_code(413);
+    header("Content-Type: application/json; charset=utf-8");
+    echo json_encode(["status" => "error", "success" => false, "message" => "Submission payload exceeds maximum allowed size."]);
+    exit;
+}
 $data = json_decode((string)$rawInput, true);
 if (!is_array($data)) {
     $data = $_POST;

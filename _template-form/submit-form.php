@@ -55,6 +55,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // =========================================================================
+// 1.5 MAX PAYLOAD SIZE GUARD (64 KB CAP AGAINST MEMORY / EMAIL BLOAT)
+// =========================================================================
+$maxPayloadBytes = 65536;
+$contentLength   = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+if ($contentLength > $maxPayloadBytes) {
+    http_response_code(413);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(["status" => "error", "success" => false, "message" => "Submission payload exceeds maximum allowed size."]);
+    exit;
+}
+
+// =========================================================================
 // 2. HONEYPOT CHECK (BOT TRAP)
 // =========================================================================
 if (!empty($_POST['fax_number'])) {
